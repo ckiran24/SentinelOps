@@ -1,0 +1,78 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      DEMO_MODE: "true"
+      JWT_SECRET: ci-only-sentinelops-signing-key-at-least-32-characters
+      LLM_MODE: fixture
+      LIVE_TOOLS_ENABLED: "false"
+      ENABLE_PGVECTOR: "false"
+      DATABASE_URL: sqlite:///./ci-sentinelops.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements-dev.lock
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --require-hashes -r apps/api/requirements-dev.lock
+          python -m pip install --no-deps --no-build-isolation -e apps/api
+      - name: Run workflow and approval security tests
+        run: python -m pytest tests apps/api/tests -q
+      - name: Run measured fixture evaluations
+        working-directory: apps/api
+        run: python -m sentinelops.evaluate --output ../../evals/results/latest.json
+      - name: Save measured report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-evaluation-report
+          path: evals/results/latest.json
+          if-no-files-found: error
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+        working-directory: apps/web
+      - name: Check high-severity dependency advisories
+        run: npm audit --audit-level=high
+        working-directory: apps/web
+      - run: npm run typecheck
+        working-directory: apps/web
+      - run: npm run build
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and build the full stack
+        run: |
+          docker compose config --quiet
+          docker compose up --build -d --wait --wait-timeout 180
+      - name: Exercise PostgreSQL queue and worker through the API
+        run: python3 infra/smoke_test.py
+      - name: Container diagnostics on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Remove temporary CI containers and volumes
+        if: always()
+        run: docker compose down --volumes

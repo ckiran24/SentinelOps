@@ -1,0 +1,18 @@
+# Managed-environment build trust only. No certificate is copied into image layers.
+# CODEX_PROXY_CERT selects a provided combined public CA bundle path.
+services:
+  migrate:
+    build:
+      secrets: [proxy_ca]
+  api:
+    build:
+      secrets: [proxy_ca]
+  worker:
+    build:
+      secrets: [proxy_ca]
+  web:
+    build:
+      secrets: [proxy_ca]
+secrets:
+  proxy_ca:
+    file: ${CODEX_PROXY_CERT:?Set the managed environment CA bundle path}

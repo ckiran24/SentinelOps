@@ -1,0 +1,2975 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>SentinelOps — architecture and build guide</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <style>body{font:16px/1.65 Arial,sans-serif;color:#16283a;max-width:1000px;margin:45px auto;padding:0 28px}h1{font-size:32px;margin:55px 0 20px;border-bottom:3px solid #11776f;padding-bottom:12px;line-height:1.25}h2{font-size:24px;margin-top:32px}h3{font-size:20px;margin-top:26px}a{color:#0b756b;text-decoration:underline}table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{border:1px solid #ccd7e1;padding:9px 12px;text-align:left;vertical-align:top}th{background:#e9f3f2}pre{background:#eef2f6;border-left:3px solid #1d837b;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:13px}code{font-family:Consolas,monospace}p code,li code{background:#eef2f6;padding:2px 4px;font-size:90%}figure{margin:24px 0}figure svg{width:100%;height:auto}#TOC{background:#f1f7f7;border:1px solid #d5e5e3;padding:20px 25px;border-radius:8px}#TOC ul{list-style:none;padding-left:20px}#TOC>ul{padding-left:0}.sourceCode{overflow-wrap:anywhere}.guide-screenshot{width:100%;height:auto;border:1px solid #ccd7e1}footer{font-size:13px;color:#557}@page{size:A4;margin:18mm 16mm} @media print{body{font-size:11pt;max-width:none;margin:0;padding:0}h1{font-size:22pt;break-before:page;margin:0 0 18pt}h1#cover{break-before:auto}h2{font-size:16pt;break-after:avoid}h3{font-size:13pt;break-after:avoid}p{orphans:3;widows:3}pre,table{font-size:8.5pt}thead{display:table-header-group}tr{break-inside:avoid}pre{break-inside:avoid}a{color:inherit}#TOC{break-after:page}figure{break-inside:avoid}.guide-screenshot{max-height:220mm;object-fit:contain}}</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">SentinelOps — architecture and build guide</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#guide-cover" id="toc-guide-cover">SentinelOps:
+implementation and architecture guide</a></li>
+<li><a href="#guide-start" id="toc-guide-start">SentinelOps</a>
+<ul>
+<li><a href="#start-here" id="toc-start-here">Start here</a></li>
+<li><a href="#what-you-can-do" id="toc-what-you-can-do">What you can
+do</a></li>
+<li><a href="#architecture" id="toc-architecture">Architecture</a></li>
+<li><a href="#quick-start-with-docker"
+id="toc-quick-start-with-docker">Quick start with Docker</a></li>
+<li><a href="#run-natively-for-learning"
+id="toc-run-natively-for-learning">Run natively for learning</a></li>
+<li><a href="#walk-through-one-incident"
+id="toc-walk-through-one-incident">Walk through one incident</a></li>
+<li><a href="#tests-and-evaluations"
+id="toc-tests-and-evaluations">Tests and evaluations</a></li>
+<li><a href="#optional-openai-reasoning"
+id="toc-optional-openai-reasoning">Optional OpenAI reasoning</a></li>
+<li><a href="#security-model" id="toc-security-model">Security
+model</a></li>
+<li><a href="#production-deployment-and-remaining-work"
+id="toc-production-deployment-and-remaining-work">Production deployment
+and remaining work</a></li>
+<li><a href="#recorded-demonstration"
+id="toc-recorded-demonstration">Recorded demonstration</a></li>
+<li><a href="#design-decisions" id="toc-design-decisions">Design
+decisions</a></li>
+</ul></li>
+<li><a href="#guide-local-setup" id="toc-guide-local-setup">Run
+SentinelOps on your own computer</a>
+<ul>
+<li><a href="#get-and-extract-the-source"
+id="toc-get-and-extract-the-source">1. Get and extract the
+source</a></li>
+<li><a href="#install-and-start-docker"
+id="toc-install-and-start-docker">2. Install and start Docker</a></li>
+<li><a href="#copy-the-local-demo-configuration"
+id="toc-copy-the-local-demo-configuration">3. Copy the local demo
+configuration</a></li>
+<li><a href="#build-and-start-the-app"
+id="toc-build-and-start-the-app">4. Build and start the app</a></li>
+<li><a href="#open-and-use-the-app" id="toc-open-and-use-the-app">5.
+Open and use the app</a></li>
+<li><a href="#if-the-browser-says-this-site-cant-be-reached"
+id="toc-if-the-browser-says-this-site-cant-be-reached">If the browser
+says “This site can’t be reached”</a></li>
+<li><a href="#stop-and-restart" id="toc-stop-and-restart">Stop and
+restart</a></li>
+</ul></li>
+<li><a href="#guide-architecture"
+id="toc-guide-architecture">Architecture: from an alert to a verified
+decision</a>
+<ul>
+<li><a href="#understand-the-two-execution-paths"
+id="toc-understand-the-two-execution-paths">1. Understand the two
+execution paths</a></li>
+<li><a href="#why-separate-an-api-and-worker"
+id="toc-why-separate-an-api-and-worker">2. Why separate an API and
+worker?</a></li>
+<li><a href="#what-each-technology-does"
+id="toc-what-each-technology-does">3. What each technology does</a></li>
+<li><a href="#workflow-diagram" id="toc-workflow-diagram">4. Workflow
+diagram</a></li>
+<li><a href="#the-data-model-and-consistency-rules"
+id="toc-the-data-model-and-consistency-rules">5. The data model and
+consistency rules</a></li>
+<li><a href="#trust-boundaries" id="toc-trust-boundaries">6. Trust
+boundaries</a></li>
+<li><a href="#local-and-cloud-infrastructure-are-different"
+id="toc-local-and-cloud-infrastructure-are-different">7. Local and cloud
+infrastructure are different</a></li>
+<li><a href="#design-trade-offs" id="toc-design-trade-offs">8. Design
+trade-offs</a></li>
+</ul></li>
+<li><a href="#guide-learning" id="toc-guide-learning">Build SentinelOps
+step by step: what to do and why</a>
+<ul>
+<li><a href="#step-1-define-the-outcome-before-choosing-tools"
+id="toc-step-1-define-the-outcome-before-choosing-tools">Step 1 — Define
+the outcome before choosing tools</a></li>
+<li><a href="#step-2-learn-the-request-lifecycle"
+id="toc-step-2-learn-the-request-lifecycle">Step 2 — Learn the request
+lifecycle</a></li>
+<li><a href="#step-3-create-the-repository-structure"
+id="toc-step-3-create-the-repository-structure">Step 3 — Create the
+repository structure</a></li>
+<li><a href="#step-4-define-typed-contracts"
+id="toc-step-4-define-typed-contracts">Step 4 — Define typed
+contracts</a></li>
+<li><a href="#step-5-persist-incidents-and-jobs-before-running-work"
+id="toc-step-5-persist-incidents-and-jobs-before-running-work">Step 5 —
+Persist incidents and jobs before running work</a></li>
+<li><a href="#step-6-build-read-only-tool-adapters"
+id="toc-step-6-build-read-only-tool-adapters">Step 6 — Build read-only
+tool adapters</a></li>
+<li><a href="#step-7-retrieve-relevant-runbooks"
+id="toc-step-7-retrieve-relevant-runbooks">Step 7 — Retrieve relevant
+runbooks</a></li>
+<li><a href="#step-8-implement-an-explicit-langgraph-workflow"
+id="toc-step-8-implement-an-explicit-langgraph-workflow">Step 8 —
+Implement an explicit LangGraph workflow</a></li>
+<li><a href="#step-9-add-optional-model-reasoning"
+id="toc-step-9-add-optional-model-reasoning">Step 9 — Add optional model
+reasoning</a></li>
+<li><a href="#step-10-enforce-policy-before-asking-for-approval"
+id="toc-step-10-enforce-policy-before-asking-for-approval">Step 10 —
+Enforce policy before asking for approval</a></li>
+<li><a href="#step-11-bind-human-approval-to-an-exact-proposal"
+id="toc-step-11-bind-human-approval-to-an-exact-proposal">Step 11 — Bind
+human approval to an exact proposal</a></li>
+<li><a href="#step-12-execute-with-idempotency-and-safe-recovery"
+id="toc-step-12-execute-with-idempotency-and-safe-recovery">Step 12 —
+Execute with idempotency and safe recovery</a></li>
+<li><a href="#step-13-verify-the-operational-outcome"
+id="toc-step-13-verify-the-operational-outcome">Step 13 — Verify the
+operational outcome</a></li>
+<li><a href="#step-14-add-an-audit-trail-and-telemetry"
+id="toc-step-14-add-an-audit-trail-and-telemetry">Step 14 — Add an audit
+trail and telemetry</a></li>
+<li><a href="#step-15-evaluate-before-claiming-quality"
+id="toc-step-15-evaluate-before-claiming-quality">Step 15 — Evaluate
+before claiming quality</a></li>
+<li><a href="#step-16-package-reproducibly"
+id="toc-step-16-package-reproducibly">Step 16 — Package
+reproducibly</a></li>
+<li><a href="#step-17-prepare-a-real-deployment"
+id="toc-step-17-prepare-a-real-deployment">Step 17 — Prepare a real
+deployment</a></li>
+</ul></li>
+<li><a href="#guide-structure" id="toc-guide-structure">Project
+structure and how to navigate it</a>
+<ul>
+<li><a href="#read-the-code-in-this-order"
+id="toc-read-the-code-in-this-order">Read the code in this
+order</a></li>
+<li><a href="#follow-one-action-through-the-repository"
+id="toc-follow-one-action-through-the-repository">Follow one action
+through the repository</a></li>
+<li><a href="#what-belongs-where-when-extending-it"
+id="toc-what-belongs-where-when-extending-it">What belongs where when
+extending it</a></li>
+</ul></li>
+<li><a href="#guide-security" id="toc-guide-security">Security model and
+trust boundaries</a>
+<ul>
+<li><a href="#treat-incident-input-and-model-output-as-untrusted"
+id="toc-treat-incident-input-and-model-output-as-untrusted">1. Treat
+incident input and model output as untrusted</a></li>
+<li><a href="#authenticate-the-caller-and-authorize-the-action"
+id="toc-authenticate-the-caller-and-authorize-the-action">2.
+Authenticate the caller and authorize the action</a></li>
+<li><a href="#classify-and-constrain-each-tool"
+id="toc-classify-and-constrain-each-tool">3. Classify and constrain each
+tool</a></li>
+<li><a href="#bind-approval-to-the-exact-action"
+id="toc-bind-approval-to-the-exact-action">4. Bind approval to the exact
+action</a></li>
+<li><a href="#separate-approval-scheduling-execution-and-verification"
+id="toc-separate-approval-scheduling-execution-and-verification">5.
+Separate approval, scheduling, execution, and verification</a></li>
+<li><a href="#make-audit-history-tamper-evident"
+id="toc-make-audit-history-tamper-evident">6. Make audit history tamper
+evident</a></li>
+<li><a href="#keep-live-credentials-behind-the-backend-boundary"
+id="toc-keep-live-credentials-behind-the-backend-boundary">7. Keep live
+credentials behind the backend boundary</a></li>
+<li><a href="#deploy-with-least-privilege-and-operational-controls"
+id="toc-deploy-with-least-privilege-and-operational-controls">8. Deploy
+with least privilege and operational controls</a></li>
+</ul></li>
+<li><a href="#guide-evaluation" id="toc-guide-evaluation">Evaluating
+SentinelOps</a>
+<ul>
+<li><a href="#freeze-the-questions-before-measuring-the-answers"
+id="toc-freeze-the-questions-before-measuring-the-answers">1. Freeze the
+questions before measuring the answers</a></li>
+<li><a href="#run-the-real-workflow" id="toc-run-the-real-workflow">2.
+Run the real workflow</a></li>
+<li><a href="#understand-exactly-what-each-metric-measures"
+id="toc-understand-exactly-what-each-metric-measures">3. Understand
+exactly what each metric measures</a></li>
+<li><a href="#verify-the-full-human-approval-lifecycle"
+id="toc-verify-the-full-human-approval-lifecycle">4. Verify the full
+human approval lifecycle</a></li>
+<li><a href="#add-stronger-evaluation-before-customer-use"
+id="toc-add-stronger-evaluation-before-customer-use">5. Add stronger
+evaluation before customer use</a></li>
+</ul></li>
+<li><a href="#guide-deployment" id="toc-guide-deployment">Run and deploy
+SentinelOps</a>
+<ul>
+<li><a href="#understand-what-runs-where"
+id="toc-understand-what-runs-where">1. Understand what runs
+where</a></li>
+<li><a href="#install-the-local-prerequisites"
+id="toc-install-the-local-prerequisites">2. Install the local
+prerequisites</a></li>
+<li><a href="#choose-explicit-local-configuration"
+id="toc-choose-explicit-local-configuration">3. Choose explicit local
+configuration</a></li>
+<li><a href="#build-and-start-the-full-stack"
+id="toc-build-and-start-the-full-stack">4. Build and start the full
+stack</a></li>
+<li><a href="#verify-the-complete-workflow"
+id="toc-verify-the-complete-workflow">5. Verify the complete
+workflow</a></li>
+<li><a href="#run-tests-and-measured-evaluations"
+id="toc-run-tests-and-measured-evaluations">6. Run tests and measured
+evaluations</a></li>
+<li><a href="#run-without-docker-when-learning-each-process"
+id="toc-run-without-docker-when-learning-each-process">7. Run without
+Docker when learning each process</a></li>
+<li><a href="#stop-inspect-or-intentionally-reset"
+id="toc-stop-inspect-or-intentionally-reset">8. Stop, inspect, or
+intentionally reset</a></li>
+<li><a href="#production-architecture-on-google-cloud"
+id="toc-production-architecture-on-google-cloud">Production architecture
+on Google Cloud</a></li>
+<li><a href="#production-prerequisites-in-order"
+id="toc-production-prerequisites-in-order">Production prerequisites, in
+order</a></li>
+<li><a href="#reviewable-cloud-run-deployment-steps"
+id="toc-reviewable-cloud-run-deployment-steps">Reviewable Cloud Run
+deployment steps</a></li>
+</ul></li>
+<li><a href="#guide-operations" id="toc-guide-operations">Operate and
+troubleshoot SentinelOps</a>
+<ul>
+<li><a href="#health-and-progress" id="toc-health-and-progress">Health
+and progress</a></li>
+<li><a href="#useful-local-commands"
+id="toc-useful-local-commands">Useful local commands</a></li>
+<li><a href="#when-something-fails" id="toc-when-something-fails">When
+something fails</a></li>
+<li><a href="#queue-recovery-and-mutation-boundaries"
+id="toc-queue-recovery-and-mutation-boundaries">Queue recovery and
+mutation boundaries</a></li>
+<li><a href="#approvals-and-audit"
+id="toc-approvals-and-audit">Approvals and audit</a></li>
+<li><a href="#backup-and-restore" id="toc-backup-and-restore">Backup and
+restore</a></li>
+<li><a href="#release-and-rollback"
+id="toc-release-and-rollback">Release and rollback</a></li>
+<li><a href="#alerts-and-capacity-decisions-for-production"
+id="toc-alerts-and-capacity-decisions-for-production">Alerts and
+capacity decisions for production</a></li>
+</ul></li>
+<li><a href="#guide-validation" id="toc-guide-validation">Validation
+record</a>
+<ul>
+<li><a href="#final-application-checks"
+id="toc-final-application-checks">Final application checks</a></li>
+<li><a href="#real-local-container-checks"
+id="toc-real-local-container-checks">Real local container
+checks</a></li>
+<li><a href="#evaluation-interpretation"
+id="toc-evaluation-interpretation">Evaluation interpretation</a></li>
+<li><a href="#recorded-evidence" id="toc-recorded-evidence">Recorded
+evidence</a></li>
+<li><a href="#what-remains-unverified-or-intentionally-unfinished"
+id="toc-what-remains-unverified-or-intentionally-unfinished">What
+remains unverified or intentionally unfinished</a></li>
+</ul></li>
+<li><a href="#guide-0001-explicit-workflow"
+id="toc-guide-0001-explicit-workflow">ADR 0001: use one explicit
+workflow orchestrator</a></li>
+<li><a href="#guide-0002-database-jobs"
+id="toc-guide-0002-database-jobs">ADR 0002: database-backed work
+requests</a></li>
+<li><a href="#guide-0003-approved-actions"
+id="toc-guide-0003-approved-actions">ADR 0003: approval authorizes an
+exact action</a></li>
+<li><a href="#guide-0004-fixture-first"
+id="toc-guide-0004-fixture-first">ADR 0004: reproducible simulation
+before live infrastructure</a></li>
+</ul>
+</nav>
+<h1 id="guide-cover">SentinelOps: implementation and architecture
+guide</h1>
+<p>A working incident platform, explained from first principles.
+Includes every build step, its purpose, project navigation, safety,
+infrastructure, evaluation and validation.</p>
+<p>Prepared 6 October 2026. The demonstrated operations use synthetic
+fixtures; production requirements are marked explicitly.</p>
+<h1 id="guide-start">SentinelOps</h1>
+<p><strong>An approval-gated incident investigation and simulated
+remediation platform.</strong> SentinelOps turns an incident into a
+traceable decision: gather observations, retrieve runbooks, form a
+hypothesis, propose a permitted action, obtain human approval, execute
+the exact approved action, verify recovery and generate a report.</p>
+<p>The repository is a runnable production-oriented foundation and
+learning project. It does not connect to real enterprise infrastructure
+by default. Fixture tools simulate metrics, logs, deployments, database
+diagnostics and mutations. Optional OpenAI reasoning consumes the same
+evidence; it never grants execution authority.</p>
+<h2 id="start-here">Start here</h2>
+<p>If you are new to architecture, begin with <a
+href="#guide-architecture">Architecture explained</a>, then work through
+<a href="#guide-learning">Every step: what and why</a>. These explain
+the building blocks, request lifecycle, project structure,
+infrastructure, safety and evaluation before cloud deployment.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Question</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>What does each component do?</td>
+<td><a href="#guide-architecture">Architecture and diagrams</a></td>
+</tr>
+<tr class="even">
+<td>How and why is every step implemented?</td>
+<td><a href="#guide-learning">Detailed learning guide</a></td>
+</tr>
+<tr class="odd">
+<td>Can I read all documentation in one place?</td>
+<td>Offline HTML guide (included in the repository under docs/media/) ·
+Printable PDF guide (included in the repository under docs/media/)</td>
+</tr>
+<tr class="even">
+<td>Where is each part of the code?</td>
+<td><a href="#guide-structure">Project structure</a></td>
+</tr>
+<tr class="odd">
+<td>What protects execution?</td>
+<td><a href="#guide-security">Security model</a></td>
+</tr>
+<tr class="even">
+<td>How are results measured?</td>
+<td><a href="#guide-evaluation">Evaluation methodology</a></td>
+</tr>
+<tr class="odd">
+<td>How do I deploy the containers?</td>
+<td><a href="#guide-deployment">Deployment guide</a></td>
+</tr>
+<tr class="even">
+<td>How do I recover failures and operate it?</td>
+<td><a href="#guide-operations">Operations guide</a></td>
+</tr>
+<tr class="odd">
+<td>What actually passed during this build?</td>
+<td><a href="#guide-validation">Validation record</a></td>
+</tr>
+<tr class="even">
+<td>Why these design choices?</td>
+<td><a href="docs/adr/">Architecture decision records</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-you-can-do">What you can do</h2>
+<ul>
+<li>Create and investigate an incident from four reproducible
+scenarios.</li>
+<li>Inspect evidence, a structured hypothesis, curated runbooks and a
+step-by-step execution trace.</li>
+<li>Review a proposed rollback or restart, approve/reject it as an
+approver, then separately request execution.</li>
+<li>Verify simulated recovery and inspect the report and hash-chained
+audit history.</li>
+<li>Run a measured synthetic evaluation suite and inspect its report in
+the console.</li>
+<li>Inspect a typed read-only MCP interface without exposing a second
+mutation route.</li>
+</ul>
+<p>The default investigation mode is deterministic and requires no
+OpenAI key. Database saturation and uncertain evidence produce manual
+follow-up instead of an unsupported automatic remediation. Confidence
+values are uncalibrated estimates, not probability guarantees.</p>
+<h2 id="architecture">Architecture</h2>
+<figure class="architecture">
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="910" viewBox="0 0 1360 910" role="img" aria-labelledby="title desc">
+<title id="title">
+SentinelOps architecture
+</title>
+<desc id="desc">The web console talks to the API, which persists
+incident and approval records in PostgreSQL. A separate LangGraph worker
+claims database jobs and uses a deterministic policy gate, simulated
+adapters, curated runbooks and optional OpenAI reasoning. High-risk
+execution requires human approval. Real integrations remain a deployment
+extension.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7a96ad"/></marker>
+<style>text{font-family:Arial,sans-serif;fill:#e7eef6}.label{font-size:20px;font-weight:700}.sub{font-size:16px;fill:#acc0d3}.note{font-size:16px;fill:#c5d5e4}.line{fill:none;stroke:#7a96ad;stroke-width:2;marker-end:url(#head)}.optional{stroke-dasharray:7 6}.box{fill:#132335;stroke:#34506b;stroke-width:1.5;rx:12}.safety{fill:#302719;stroke:#dcad50;stroke-width:2;rx:12}</style>
+</defs> <rect width="1360" height="910" fill="#08131f"/>
+<text x="60" y="62" font-size="34" font-weight="700">SentinelOps</text><text x="60" y="96" class="sub">Evidence-led
+investigation with an explicit human approval boundary</text>
+<rect x="60" y="142" width="315" height="117" class="box"/><text x="85" y="178" class="label">Operator
+console</text><text x="85" y="207" class="sub">Next.js /
+React</text><text x="85" y="233" class="sub">Evidence · approve ·
+execute · report</text>
+<rect x="522" y="142" width="315" height="117" class="box"/><text x="547" y="178" class="label">Trusted
+API boundary</text><text x="547" y="207" class="sub">FastAPI · Pydantic
+· JWT / RBAC</text><text x="547" y="233" class="sub">Validate requests ·
+persist jobs</text>
+<path d="M375 200H515" class="line"/><text x="396" y="183" class="sub">HTTP
++ token</text>
+<rect x="522" y="351" width="315" height="141" class="box"/><text x="547" y="388" class="label">Durable
+source of truth</text><text x="547" y="418" class="sub">PostgreSQL ·
+optional pgvector</text><text x="547" y="445" class="sub">Incidents ·
+jobs · exact proposals</text><text x="547" y="471" class="sub">Approvals
+· audit · runbooks</text>
+<path d="M680 259V344" class="line"/><text x="699" y="310" class="sub">Transactions</text>
+<rect x="60" y="351" width="315" height="141" class="box"/><text x="85" y="388" class="label">Separate
+worker process</text><text x="85" y="418" class="sub">Python ·
+LangGraph</text><text x="85" y="445" class="sub">Claim jobs ·
+investigate · verify</text><text x="85" y="471" class="sub">Bounded
+retry / recovery</text>
+<path d="M375 424H515" class="line"/><text x="394" y="404" class="sub">Jobs
++ results</text>
+<rect x="966" y="142" width="334" height="117" class="box"/><text x="991" y="178" class="label">Optional
+reasoning</text><text x="991" y="207" class="sub">OpenAI Responses
+API</text><text x="991" y="233" class="sub">Structured hypothesis from
+evidence</text> <path d="M217 351V293H1128V266" class="line optional"/>
+<rect x="60" y="589" width="315" height="136" class="safety"/><text x="85" y="625" class="label">Deterministic
+policy gate</text><text x="85" y="655" class="sub">Typed arguments ·
+tool allowlist</text><text x="85" y="681" class="sub">Approval +
+proposal fingerprint</text><text x="85" y="707" class="sub">Role check +
+idempotency</text>
+<path d="M217 492V582" class="line"/><text x="237" y="544" class="sub">Recheck
+at execution</text>
+<rect x="522" y="589" width="315" height="136" class="box"/><text x="547" y="625" class="label">Fixture
+tool adapter</text><text x="547" y="655" class="sub">Metrics ·
+deployments · logs</text><text x="547" y="681" class="sub">Named
+read-only diagnostics</text><text x="547" y="707" class="sub">Approved
+simulated rollback/restart</text>
+<path d="M375 657H515" class="line"/><text x="397" y="638" class="sub">Validated
+call</text>
+<rect x="966" y="351" width="334" height="141" class="box"/><text x="991" y="388" class="label">Read-only
+MCP server</text><text x="991" y="418" class="sub">Standard typed tool
+interface</text><text x="991" y="445" class="sub">Fixture observations
+only</text><text x="991" y="471" class="sub">No direct mutation
+bypass</text> <path d="M1133 492V554H680V582" class="line"/>
+<rect x="966" y="589" width="334" height="136" class="box"/><text x="991" y="625" class="label">Real
+integration extension</text><text x="991" y="655" class="sub">Scoped
+credentials + staging
+tests</text><text x="991" y="681" class="sub">Provider idempotency /
+reconciliation</text><text x="991" y="707" class="sub">Fail closed until
+implemented</text> <path d="M837 657H959" class="line optional"/>
+<path d="M837 201H904V795H217V732" class="line"/><text x="549" y="789" class="sub">Human
+approval persisted by API; approval and execution are separate
+operations</text> <text x="60" y="849" class="note">Solid: implemented
+core flow. Dashed: optional configuration or extension
+boundary.</text><text x="60" y="877" class="note">Compose runs
+containers locally. Cloud deployment adds HTTPS ingress, managed
+database, secrets and an always-on worker.</text>
+</svg>
+</figure>
+<pre class="mermaid"><code>flowchart LR
+    UI[Next.js console] --&gt; API[FastAPI + JWT/RBAC]
+    API --&gt; DB[(PostgreSQL: incident / job / approval / audit)]
+    WORKER[Worker + LangGraph] --&gt; DB
+    WORKER --&gt; RAG[Runbook retrieval]
+    WORKER --&gt; POLICY[Typed deterministic policy]
+    WORKER -. optional .-&gt; LLM[OpenAI Responses API]
+    POLICY --&gt; TOOLS[Simulated tool adapters]
+    HUMAN[Human approver] --&gt; UI
+    MCP[Read-only MCP] --&gt; TOOLS</code></pre>
+<p>The API and worker share code and database records, not process
+memory. PostgreSQL owns durable state. SQLite is a single-worker
+native-development fallback. Runbook retrieval uses a keyword baseline;
+pgvector schema support is an extension point for a proper embedding
+ingestion/search pipeline. Redis and the telemetry collector are
+optional infrastructure profiles, not prerequisites for the current
+database-backed queue.</p>
+<h2 id="quick-start-with-docker">Quick start with Docker</h2>
+<p>Requirements: Docker Engine/Desktop with Compose v2, enough memory
+for a Next.js build, and access to npm/Python/container registries. No
+cloud account or model key is required.</p>
+<p>Download/extract the project onto your own computer and open a
+terminal in the <code>SentinelOps</code> folder containing
+<code>compose.yaml</code>. Docker Desktop must be running on that
+computer. These steps are also available with Windows and macOS/Linux
+examples in <a href="#guide-local-setup">Local setup and connection
+troubleshooting</a>.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example .env</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose up <span class="at">--build</span> <span class="at">-d</span> <span class="at">--wait</span></span></code></pre></div>
+<p>Open the console at <strong>http://localhost:3000</strong> and
+interactive API documentation at
+<strong>http://localhost:8000/docs</strong>. <code>localhost</code>
+means the computer running your browser: these addresses work when
+Docker is running on that same computer. Starting containers in a remote
+Codex cloud workspace does not start the app on your laptop or make
+cloud loopback addresses reachable there.</p>
+<p>The browser talks directly to the API, so
+<code>NEXT_PUBLIC_API_URL</code> must be reachable from the browser.
+This setting is embedded into the frontend at build time. If you change
+ports in <code>.env</code>, update <code>NEXT_PUBLIC_API_URL</code> and
+<code>CORS_ORIGINS</code> to match and rebuild the frontend. Remote
+access needs a separately configured hosting or forwarding mechanism; no
+browser-accessible preview URL is provided by the source repository
+itself.</p>
+<p>The demo identities are:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Identity</th>
+<th>Password</th>
+<th>Permission</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>operator</code></td>
+<td><code>sentinel-demo</code></td>
+<td>Create and investigate incidents</td>
+</tr>
+<tr class="even">
+<td><code>approver</code></td>
+<td><code>sentinel-demo</code></td>
+<td>Investigate, approve/reject and execute permitted remediation</td>
+</tr>
+</tbody>
+</table>
+<p>These are public local-demo credentials. The Compose demo binds
+web/API ports to loopback and does not publish PostgreSQL or Redis
+ports. Disable demo login and replace signing configuration before any
+shared deployment. Native configuration defaults to demo login
+disabled.</p>
+<p>Compose starts PostgreSQL, runs migrations and seeds runbooks, then
+starts the API, worker and web app. The optional cache and collector can
+be started explicitly:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">--profile</span> cache <span class="at">--profile</span> telemetry up <span class="at">-d</span></span></code></pre></div>
+<p>Starting those profiles does not automatically add caching or OTLP
+exports. Native OTEL_CONSOLE_EXPORT=true enables local console spans;
+production collector export and cross-process propagation remain
+extension work. See the deployment guide for the current integration
+boundaries.</p>
+<p>Useful operations:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose ps</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose logs <span class="at">-f</span> api worker</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose down</span></code></pre></div>
+<p>Optional: if Python is installed on your computer, run
+<code>python infra/smoke_test.py</code> while the app is running to
+check the incident workflow. Starting the app with Docker does not
+require Python installed on your computer.</p>
+<p>Ordinary <code>down</code> retains the named database volume. Do not
+remove volumes unless you intend to discard local incident history.</p>
+<h2 id="run-natively-for-learning">Run natively for learning</h2>
+<p>Requirements: Python 3.12+, Node.js 22+, npm. Use SQLite and one
+worker for this path. Run commands from the repository root unless a
+<code>cd</code> is shown.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-m</span> venv .venv</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv/bin/activate</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">--require-hashes</span> <span class="at">-r</span> apps/api/requirements-dev.lock</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">--no-deps</span> <span class="at">-e</span> apps/api</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example apps/api/.env</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/api</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.migrate</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.seed</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="ex">uvicorn</span> sentinelops.main:app <span class="at">--host</span> 127.0.0.1 <span class="at">--port</span> 8000</span></code></pre></div>
+<p>In a second terminal, activate the same environment and start the
+worker from <code>apps/api</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv/bin/activate</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/api</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.worker</span></code></pre></div>
+<p>In a third terminal, start the frontend:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/web</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> ci</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run dev</span></code></pre></div>
+<p>The API and worker must use the same <code>DATABASE_URL</code>; two
+different SQLite files would create two isolated systems. Both read
+<code>apps/api/.env</code> when started from that directory. On Windows,
+use the corresponding virtual-environment activation command and an
+appropriate shell for these commands.</p>
+<h2 id="walk-through-one-incident">Walk through one incident</h2>
+<ol type="1">
+<li>Sign in as <strong>operator</strong> and create the checkout
+deployment-regression scenario.</li>
+<li>Click <strong>Investigate</strong>. The API queues durable work; the
+worker gathers fixture observations and produces the evidence and
+proposal.</li>
+<li>Inspect the hypothesis and the rollback proposal. Investigation
+stops at the policy gate and performs no mutation.</li>
+<li>Sign in as <strong>approver</strong>, reopen the incident, enter a
+reason and approve the exact proposal.</li>
+<li>Click <strong>Execute</strong>. The worker rechecks authorization
+and changes simulated deployment state.</li>
+<li>Review verification, the final report, workflow trace and audit
+events.</li>
+</ol>
+<p>Try database saturation or an unknown scenario next. The useful
+outcome may be escalation rather than an automatic action. A safe
+incident responder needs to recognize that difference.</p>
+<h2 id="tests-and-evaluations">Tests and evaluations</h2>
+<p>With the Python environment active, from the root:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pytest tests apps/api/tests <span class="at">-q</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/api</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.evaluate <span class="at">--output</span> ../../evals/results/latest.json</span></code></pre></div>
+<p>Then open the Evaluations view. The report is generated from
+execution, not seeded with invented scores. The fixture corpus contains
+explicit telemetry and expected outcomes in separate fields; expected
+answers are not passed to the workflow.</p>
+<p>Frontend checks:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/web</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run typecheck</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run build</span></code></pre></div>
+<p>Backend tests check policy and lifecycle behavior, including role
+denial, approval binding, typed tool arguments and idempotency.
+Evaluation metrics are synthetic fixture baseline results. They do not
+establish real-model accuracy, semantic retrieval quality, cloud latency
+or production remediation reliability. See <a
+href="#guide-evaluation">evaluation.md</a> and the <a
+href="#guide-validation">validation record</a> for the exact scope.</p>
+<h2 id="optional-openai-reasoning">Optional OpenAI reasoning</h2>
+<p>For Compose, edit the root <code>.env</code>; for native processes,
+edit <code>apps/api/.env</code>:</p>
+<pre class="dotenv"><code>LLM_MODE=openai
+OPENAI_API_KEY=your-server-side-key
+OPENAI_MODEL=your-supported-model-id</code></pre>
+<p>Restart the API and worker after changing backend settings. For
+Compose, use
+<code>docker compose up -d --force-recreate api worker</code>. The
+default example model is a configurable starting point, not a guarantee
+of availability for your account. OpenAI mode uses structured hypothesis
+output from the Responses API. Production tool adapters remain
+disabled.</p>
+<p>The supplied validation was run without provider credentials. Do not
+claim a live-agent score or token cost until you run a separately
+labeled provider-backed suite and record actual usage.</p>
+<h2 id="security-model">Security model</h2>
+<p>Read tools are allowlisted and typed. The SQL diagnostic tool accepts
+named adapter-owned templates, not arbitrary SQL.
+<code>rollback_deployment</code> and <code>restart_service</code>
+require an approver and an exact matching persisted approval.
+<code>write_sql</code>, <code>delete_data</code> and unknown tools are
+blocked. API checks and worker checks enforce the boundary independently
+of the UI and model.</p>
+<p>Audit records are append-only through the application ORM and
+hash-chained for integrity checking. This does not make the database
+immutable against administrators or direct SQL. Stronger retention
+requires database grants and external immutable storage/anchoring.</p>
+<p>JWT signature, issuer, audience and expiry are validated. Demo login
+is intentionally local-only. A configurable verification key provides a
+token validation boundary, but enterprise OIDC login, JWKS rotation,
+organization mapping and browser session hardening still require
+deployment-specific work.</p>
+<h2 id="production-deployment-and-remaining-work">Production deployment
+and remaining work</h2>
+<p>The GCP deployment guide maps the containers to Cloud Run, Cloud SQL,
+Secret Manager and an always-on worker. Cloud manifests are templates to
+review and configure, not evidence of a deployed cloud environment. No
+cloud resources were provisioned by this build. Terraform is a
+documented next step rather than a misleading empty infrastructure
+promise.</p>
+<p>Before serving real customers, complete and validate:</p>
+<ul>
+<li>Enterprise identity, service/environment-scoped RBAC, tenant
+isolation where needed, and protected browser sessions.</li>
+<li>Authorized live adapters with scoped credentials, timeouts, retries,
+provider idempotency and ambiguous-outcome reconciliation.</li>
+<li>Permission-aware runbook ingestion, versioned embeddings, semantic
+retrieval and retrieval-specific evals if pgvector is enabled.</li>
+<li>Approval expiry/change windows, separation of duties, external audit
+retention and secret rotation.</li>
+<li>Production database migrations, backup restore drills,
+worker/concurrency tests, load tests and capacity limits.</li>
+<li>Exported telemetry, dashboards, alerting, SLOs and an on-call
+runbook.</li>
+<li>Staging failure exercises, deployment rollback, dependency/security
+review and measured live-model latency/cost.</li>
+</ul>
+<p>Each item has a reason and a verification step in the <a
+href="#guide-learning">learning guide</a> and <a
+href="#guide-operations">operations guide</a>. This separation lets you
+demonstrate real engineering work without presenting simulation as
+production evidence.</p>
+<h2 id="recorded-demonstration">Recorded demonstration</h2>
+<p>These artifacts were captured from the running fixture application,
+rather than drawn as mockups:</p>
+<ul>
+<li>Incident creation, approval, execution and resolution video
+(included in the repository under docs/media/)</li>
+<li>Investigation trace and supporting evidence (included in the
+repository under docs/media/)</li>
+<li>Measured evaluation dashboard (included in the repository under
+docs/media/)</li>
+<li>Resolved incident report (included in the repository under
+docs/media/)</li>
+<li>Mobile console (included in the repository under docs/media/)</li>
+</ul>
+<p>The recording and screenshots use simulated telemetry. The complete
+PostgreSQL container path was separately verified; see the validation
+record.</p>
+<h2 id="design-decisions">Design decisions</h2>
+<ul>
+<li><a href="#guide-0001-explicit-workflow">Use one explicit workflow
+orchestrator</a></li>
+<li><a href="#guide-0002-database-jobs">Persist work requests in the
+database</a></li>
+<li><a href="#guide-0003-approved-actions">Approve exact
+actions</a></li>
+<li><a href="#guide-0004-fixture-first">Build reproducible fixtures
+before live integrations</a></li>
+</ul>
+<p>The project deliberately avoids combining multiple agent
+orchestration frameworks. The essential engineering decisions are who
+owns state, who may authorize a mutation, what survives a crash, and how
+an outcome is verified.</p>
+<h1 id="guide-local-setup">Run SentinelOps on your own computer</h1>
+<p>The source project was built in a remote Codex cloud workspace. A
+browser address beginning with <code>localhost</code> points to the
+computer running that browser. Containers running in the cloud workspace
+therefore cannot be opened through your laptop’s <code>localhost</code>
+address.</p>
+<p>To use <code>http://localhost:3000</code>, put the source project and
+run Docker on the same computer as your browser. This guide uses the
+repository’s default ports. No model key or cloud account is needed for
+the fixture demo.</p>
+<h2 id="get-and-extract-the-source">1. Get and extract the source</h2>
+<p>Open <a href="https://github.com/ckiran24/SentinelOps">the
+SentinelOps repository</a>, select <strong>Code → Download ZIP</strong>,
+and extract <code>SentinelOps-main.zip</code>. Open a terminal in the
+extracted <code>SentinelOps-main</code> folder containing
+<code>compose.yaml</code>, <code>.env.example</code>, <code>apps</code>,
+<code>docs</code>, and <code>infra</code>.</p>
+<p>If using the standalone <code>SentinelOps-source.zip</code> archive
+instead, extract it and open a terminal in its <code>SentinelOps</code>
+folder. With Git installed, you can also download the project using:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/ckiran24/SentinelOps.git</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> SentinelOps</span></code></pre></div>
+<p>Why: Compose reads <code>compose.yaml</code> from the current
+directory. Running commands in an unrelated folder will produce a
+configuration-file error rather than start this project.</p>
+<h2 id="install-and-start-docker">2. Install and start Docker</h2>
+<p>Install Docker Desktop for Windows or macOS using Docker’s
+instructions for your operating system. Start Docker Desktop and wait
+until the engine is running. Linux users can use Docker Engine with the
+Compose v2 plugin.</p>
+<p>Verify in the terminal:</p>
+<pre class="text"><code>docker version
+docker compose version</code></pre>
+<p><code>docker version</code> should show both a Client and a Server. A
+missing Server or daemon connection error means the Docker engine is not
+running or is inaccessible. Windows installations may require WSL 2 and
+a restart; follow Docker Desktop’s installation prompts.</p>
+<p>Why: Docker runs the web app, API, worker, and PostgreSQL together.
+You do not need to install Node.js, Python, or PostgreSQL separately for
+this route.</p>
+<h2 id="copy-the-local-demo-configuration">3. Copy the local demo
+configuration</h2>
+<p>In Windows PowerShell:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Copy-Item</span> <span class="op">.</span><span class="fu">env</span><span class="op">.</span><span class="fu">example</span> <span class="op">.</span><span class="fu">env</span></span></code></pre></div>
+<p>In macOS/Linux Terminal:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example .env</span></code></pre></div>
+<p>If <code>.env</code> already exists, inspect it before copying over
+it. The example contains public demo credentials and local loopback
+bindings. Keep the default values for this first run:</p>
+<pre class="dotenv"><code>WEB_PORT=3000
+API_PORT=8000
+NEXT_PUBLIC_API_URL=http://localhost:8000
+CORS_ORIGINS=http://localhost:3000</code></pre>
+<p>Why: These settings must agree about where the browser can find the
+API and which web origin the API accepts.
+<code>NEXT_PUBLIC_API_URL</code> is included in the frontend at build
+time.</p>
+<h2 id="build-and-start-the-app">4. Build and start the app</h2>
+<p>Run this from the folder containing <code>compose.yaml</code>:</p>
+<pre class="text"><code>docker compose up --build -d --wait
+docker compose ps -a</code></pre>
+<p>The initial build downloads dependencies and takes longer than later
+starts. Wait for it to finish successfully before opening the browser.
+PostgreSQL, API, worker, and web should be running and healthy. The
+one-time <code>migrate</code> service should show
+<code>Exited (0)</code>; that is a successful migration, not a broken
+server.</p>
+<p>Why: Compose builds the application images, starts PostgreSQL,
+creates its schema, seeds runbooks, and then starts dependent services.
+The <code>--wait</code> option waits for service readiness;
+<code>-d</code> leaves them running in the background.</p>
+<h2 id="open-and-use-the-app">5. Open and use the app</h2>
+<p>Open these addresses in a browser on the computer running Docker:</p>
+<ul>
+<li>Console: <code>http://localhost:3000</code></li>
+<li>API documentation: <code>http://localhost:8000/docs</code></li>
+<li>API readiness: <code>http://localhost:8000/health/ready</code></li>
+</ul>
+<p>For the demo, sign in as <code>operator</code> with password
+<code>sentinel-demo</code>. Create and investigate an incident. Sign in
+as <code>approver</code> with the same password to review a proposal and
+approve it. Execution is a separate action after approval.</p>
+<p>The default fixture mode simulates infrastructure observations and
+remediation. It does not change real infrastructure.</p>
+<h2 id="if-the-browser-says-this-site-cant-be-reached">If the browser
+says “This site can’t be reached”</h2>
+<ol type="1">
+<li><p>Confirm the source is on this computer and Docker Desktop is
+running here. Cloud containers do not supply your computer’s localhost
+server.</p></li>
+<li><p>Run <code>docker compose ps -a</code> from the project folder.
+The <code>web</code> service should publish
+<code>127.0.0.1:3000-&gt;3000/tcp</code>; the API should publish
+<code>127.0.0.1:8000-&gt;8000/tcp</code> with default settings.</p></li>
+<li><p>If services are missing, stopped, or unhealthy, inspect the
+errors:</p>
+<pre class="text"><code>docker compose logs --tail=100 web api migrate postgres</code></pre></li>
+<li><p>If <code>.env</code> uses another <code>WEB_PORT</code>, open
+that port instead. To resolve a port conflict, change all corresponding
+values together. For example:</p>
+<pre class="dotenv"><code>WEB_PORT=3100
+API_PORT=8100
+NEXT_PUBLIC_API_URL=http://localhost:8100
+CORS_ORIGINS=http://localhost:3100</code></pre>
+<p>Then run <code>docker compose up --build -d --wait</code> again and
+open <code>http://localhost:3100</code>. These are an alternative pair
+of ports, not the defaults.</p></li>
+<li><p>Use <code>http://</code>, since this local demo does not
+configure HTTPS. If localhost name resolution is suspect, compare the
+page at <code>http://127.0.0.1:3000</code>; use the configured localhost
+console origin for the full authenticated demo.</p></li>
+</ol>
+<p>If the console loads but shows API connection errors, open the
+readiness URL and check the API logs. Confirm
+<code>NEXT_PUBLIC_API_URL</code> and <code>CORS_ORIGINS</code> match
+your chosen ports, then rebuild after correcting them.</p>
+<h2 id="stop-and-restart">Stop and restart</h2>
+<pre class="text"><code>docker compose down
+docker compose up -d --wait</code></pre>
+<p>Ordinary <code>down</code> keeps the named PostgreSQL volume, so
+incident history persists. Removing volumes discards that history; it is
+not needed for connection troubleshooting.</p>
+<h1 id="guide-architecture">Architecture: from an alert to a verified
+decision</h1>
+<p>Architecture means deciding which component owns each responsibility,
+how components communicate, and what happens when one fails. Choosing a
+framework is only one part of that decision. SentinelOps separates human
+interaction, trusted policy, long-running work, external observations,
+and durable records.</p>
+<h2 id="understand-the-two-execution-paths">1. Understand the two
+execution paths</h2>
+<p><strong>Investigation is read-only.</strong> An operator creates an
+incident. A worker classifies it, retrieves runbooks, reads simulated
+service metrics/deployments/logs, builds a hypothesis and evidence, and
+proposes an action. Policy evaluates that action. The result is either
+an approval request or a case requiring more investigation.</p>
+<p><strong>Remediation crosses a trust boundary.</strong> An approver
+reviews a specific proposal and records a reason. Approval does not
+automatically execute it. The approver then requests execution. The
+worker revalidates the exact approved proposal and records the outcome.
+Verification checks service behavior after the simulated change; a
+successful tool return alone cannot resolve an incident.</p>
+<pre class="mermaid"><code>flowchart TB
+    U[Operator / Approver] --&gt; WEB[Next.js / React console]
+    WEB --&gt;|HTTPS + bearer token| API[FastAPI: validation, RBAC, incident API]
+    API --&gt;|transactions| DB[(PostgreSQL: incidents, jobs, approvals, audit)]
+    WORKER[Python worker + LangGraph] --&gt;|claim durable jobs| DB
+    WORKER --&gt; POLICY[Typed tool registry + deterministic policy]
+    WORKER --&gt; RAG[Runbook retrieval]
+    RAG --&gt; CURATED[Curated runbooks in code]
+    RAG -. future database/vector retrieval .-&gt; DB
+    WORKER --&gt; LLM[Optional OpenAI Responses API]
+    POLICY --&gt; FIXTURE[Fixture tool adapter: simulated systems]
+    MCP[MCP server: read-only tool interface] --&gt; FIXTURE
+    WORKER -. deployment extension .-&gt; REAL[Real metrics / logs / deployment adapters]
+    WORKER -. optional best-effort cache .-&gt; REDIS[(Redis)]
+    API -. telemetry .-&gt; OTEL[OpenTelemetry collector]
+    WORKER -. telemetry .-&gt; OTEL</code></pre>
+<p>Dashed connections represent optional components or an extension
+boundary; they are not evidence that a real enterprise integration is
+configured. PostgreSQL is the shared operational source of truth.
+Runbook browsing is backed by seeded database rows; investigation
+retrieval currently uses the matching curated definitions in code.
+SQLite is a convenient single-worker local fallback. Redis must never be
+the sole holder of an approval or an execution request.</p>
+<h2 id="why-separate-an-api-and-worker">2. Why separate an API and
+worker?</h2>
+<p>An HTTP API should answer promptly. Investigation may spend seconds
+waiting for an external service and may later wait hours for a person.
+Keeping that work inside the incoming request makes browser disconnects,
+reverse-proxy timeouts and process restarts affect the workflow.</p>
+<p>The API validates the request and persists a job. A separate worker
+claims it and saves results. That gives us a place to add bounded
+retries, job leases and execution-specific recovery. The browser polls
+the incident detail while work is active. A websocket would change
+delivery to the browser; it would not replace durable state.</p>
+<p>The initial application uses a database job table rather than adding
+a second queue as another source of truth. PostgreSQL supports
+transactional job claims. A larger deployment can use a managed queue,
+but publication and consumption must account for duplicate delivery and
+transaction boundaries, usually with an outbox. Redis is useful for
+expendable cache entries, not as the authoritative job ledger.</p>
+<h2 id="what-each-technology-does">3. What each technology does</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Job in this project</th>
+<th>Why it exists</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Next.js + React</td>
+<td>Operator console and interactive incident details</td>
+<td>People need to inspect evidence and make explicit decisions.</td>
+</tr>
+<tr class="even">
+<td>FastAPI</td>
+<td>HTTP endpoints and dependency-based authentication</td>
+<td>Provides typed API boundaries and generated OpenAPI
+documentation.</td>
+</tr>
+<tr class="odd">
+<td>Pydantic</td>
+<td>Incident, proposal and tool argument validation</td>
+<td>Rejects malformed inputs before application logic uses them.</td>
+</tr>
+<tr class="even">
+<td>SQLAlchemy</td>
+<td>Database access and transactions</td>
+<td>Keeps application models coherent across PostgreSQL and the local
+SQLite fallback.</td>
+</tr>
+<tr class="odd">
+<td>PostgreSQL</td>
+<td>Operational records and durable jobs</td>
+<td>Preserves state and coordinates concurrent processes.</td>
+</tr>
+<tr class="even">
+<td>pgvector</td>
+<td>Optional runbook embedding storage/search</td>
+<td>Supports semantic retrieval when embeddings and an index are
+configured. The implemented retrieval is keyword ranking over curated
+in-code documents; ingestion, embedding generation, vector indexing and
+semantic search are not implemented.</td>
+</tr>
+<tr class="odd">
+<td>LangGraph</td>
+<td>Explicit investigation steps and conditional transitions</td>
+<td>Makes the workflow inspectable and avoids an unbounded agent loop.
+Lifecycle routing is handled by application code.</td>
+</tr>
+<tr class="even">
+<td>OpenAI Responses API</td>
+<td>Optional evidence-grounded hypothesis generation</td>
+<td>Provides reasoning assistance; the model has no authority to approve
+or execute tools.</td>
+</tr>
+<tr class="odd">
+<td>MCP</td>
+<td>Typed external tool interface</td>
+<td>Lets integrations be exposed consistently, while application policy
+remains the enforcement point.</td>
+</tr>
+<tr class="even">
+<td>Redis</td>
+<td>Optional short-lived cache</td>
+<td>Can reduce repeated reads; losing cache data must not lose incident
+progress.</td>
+</tr>
+<tr class="odd">
+<td>OpenTelemetry</td>
+<td>Workflow span hooks and an optional receiver scaffold</td>
+<td>Stored workflow traces work locally; OTEL_CONSOLE_EXPORT=true
+enables local console spans. OTLP exports and cross-process request/job
+trace propagation are not wired in this version.</td>
+</tr>
+<tr class="even">
+<td>Docker Compose</td>
+<td>Local multi-process environment</td>
+<td>Makes the API, worker, web app and PostgreSQL run with known
+dependencies.</td>
+</tr>
+<tr class="odd">
+<td>GitHub Actions</td>
+<td>Repeatable checks on changes</td>
+<td>Prevents known test/build regressions from reaching the main
+branch.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="workflow-diagram">4. Workflow diagram</h2>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; new
+    new --&gt; investigating: enqueue investigation
+    investigating --&gt; awaiting_approval: supported allowed proposal
+    investigating --&gt; needs_attention: missing / uncertain evidence
+    investigating --&gt; failed: unrecoverable investigation error
+    awaiting_approval --&gt; approved: approver records reason
+    awaiting_approval --&gt; rejected: approver declines
+    approved --&gt; executing: explicit execution request
+    executing --&gt; resolved: post-action verification passes
+    executing --&gt; needs_attention: verification fails / result ambiguous
+    executing --&gt; failed: definite failure
+    resolved --&gt; [*]
+    rejected --&gt; [*]</code></pre>
+<p>An approval is a database record, not a message to the model. Worker
+execution is a separate operation. The compiled graph currently has a
+bounded sequential investigation path that ends at policy. The worker
+maps its result to the lifecycle states above. The application persists
+user-visible state at job boundaries; do not confuse this with a fully
+configured LangGraph checkpointer that can resume inside any node after
+a crash.</p>
+<h2 id="the-data-model-and-consistency-rules">5. The data model and
+consistency rules</h2>
+<ul>
+<li><strong>Incident:</strong> the alert, service, severity and current
+lifecycle status.</li>
+<li><strong>Investigation result:</strong> hypothesis, evidence and
+trace entries.</li>
+<li><strong>Proposal:</strong> exact tool name and arguments plus a
+canonical fingerprint.</li>
+<li><strong>Approval:</strong> approver identity, reason and the
+proposal fingerprint it authorizes.</li>
+<li><strong>Job:</strong> durable request, claim/lease metadata and
+terminal outcome.</li>
+<li><strong>Audit event:</strong> actor, event, timestamp, payload and
+integrity-chain hash.</li>
+<li><strong>Runbook:</strong> service guidance and optional embedding
+for retrieval.</li>
+</ul>
+<p>The important invariant is: an execution refers to an approval for
+the same proposal content, in the same incident, with the required role.
+Updating arguments after approval invalidates the approval. Another
+invariant is that repeating an execution request must not apply the same
+action twice. The application uses idempotency records and persisted
+state to enforce this for its simulated adapters. Real integrations must
+support their own idempotency or reconciliation too.</p>
+<p>SQL transactions group changes that must agree. For example,
+approving a proposal and writing its audit event should commit together.
+Locks coordinate concurrent requests. Hashing an action does not replace
+those database controls.</p>
+<h2 id="trust-boundaries">6. Trust boundaries</h2>
+<ol type="1">
+<li><strong>Browser to API:</strong> the browser is untrusted. API
+validation and authorization apply even if someone bypasses the
+interface.</li>
+<li><strong>Model output to policy:</strong> model output is untrusted
+data. It must match a typed schema and a tool allowlist. Retrieved
+runbooks and logs are untrusted too; text inside them cannot grant
+permissions.</li>
+<li><strong>Policy to adapter:</strong> every mutation requires a valid
+approval at execution time. High-risk tool credentials should be
+isolated from read-only tools.</li>
+<li><strong>Application to database:</strong> an ordinary application
+user must not update/delete audit events. A database administrator
+remains powerful; external immutable retention is required for stronger
+guarantees.</li>
+<li><strong>Service to provider:</strong> credentials stay server-side;
+production egress should restrict destinations and tool scopes.</li>
+</ol>
+<p>The fixture adapter deliberately changes simulated state only. The
+project does not connect to your production deployment or database, and
+an OpenAI key does not enable live remediation.</p>
+<h2 id="local-and-cloud-infrastructure-are-different">7. Local and cloud
+infrastructure are different</h2>
+<pre class="mermaid"><code>flowchart LR
+    B[Browser] --&gt; TLS[HTTPS ingress / load balancer]
+    TLS --&gt; W[Next.js container]
+    TLS --&gt; A[FastAPI service]
+    A --&gt; PG[(Managed PostgreSQL + pgvector)]
+    WK[Always-on worker service] --&gt; PG
+    WK --&gt; OAI[OpenAI HTTPS API]
+    A --&gt; SM[Secret manager]
+    WK --&gt; SM
+    A --&gt; LOG[Logs / traces / metrics]
+    WK --&gt; LOG
+    WK -. optional .-&gt; C[(Managed Redis)]</code></pre>
+<p>Compose runs these processes on one developer machine. Cloud Run or
+ECS runs the containers under a managed scheduler. Managed PostgreSQL
+supplies backups, high availability options and database operations;
+container orchestration alone does not. The polling worker requires CPU
+while idle, a minimum running instance and a clear concurrency model. A
+request-only scale-to-zero service is unsuitable for the current polling
+worker. See <a href="#guide-deployment">deployment.md</a> for the
+concrete GCP path and <a href="#guide-operations">operations.md</a> for
+recovery procedures.</p>
+<h2 id="design-trade-offs">8. Design trade-offs</h2>
+<p><strong>One application database first.</strong> This simplifies
+consistency but makes the database part of both request and worker
+availability. Monitor connections and queue depth. Split analytical
+history or vector search only when workload evidence justifies it.</p>
+<p><strong>Deterministic policy around a probabilistic model.</strong>
+The model can assist diagnosis. Approval requirements, permission checks
+and forbidden operations must be deterministic code that remains
+effective when the model is wrong.</p>
+<p><strong>A fixture environment before live adapters.</strong> This
+makes the workflow reproducible and safe to demonstrate. It does not
+prove that a real rollout system, metrics source or database behaves
+correctly. Contract tests and staged failure injection are required for
+each integration.</p>
+<p><strong>Explicit state over framework accumulation.</strong>
+LangGraph is the single workflow orchestrator. Responses API is the
+model interface. MCP is a tool protocol. Adding another orchestration
+SDK would add competing state and recovery semantics without solving a
+current requirement.</p>
+<h1 id="guide-learning">Build SentinelOps step by step: what to do and
+why</h1>
+<p>Read this alongside the code. The order follows the dependencies of
+the system: understand the problem, define contracts, persist state,
+investigate, apply policy, involve a human, execute, verify, then
+operate and evaluate it.</p>
+<h2 id="step-1-define-the-outcome-before-choosing-tools">Step 1 — Define
+the outcome before choosing tools</h2>
+<p>The outcome is a trustworthy incident decision with supporting
+evidence, and a verified action when approved. A fluent chatbot response
+is not enough. For the example incident, the starting observation is
+“checkout API errors rose after a release.” A useful ending is either a
+verified simulated rollback or a clear escalation explaining which
+evidence is missing.</p>
+<p>Write down the actor and permitted action: an operator may submit and
+investigate; an approver may authorize and execute a high-risk
+remediation. The first implementation has a single organization and two
+demo roles. Tenant isolation, enterprise identity lifecycle and
+service-specific entitlements are production extensions.</p>
+<p><strong>Why:</strong> clear outcomes determine which endpoints,
+database records and tests matter. They also make it possible to measure
+correctness rather than judging the agent’s writing style.</p>
+<p><strong>Verify:</strong> run the checkout scenario end to end and
+inspect evidence, approval, execution and verification. A diagnosis
+without the approval boundary is incomplete.</p>
+<h2 id="step-2-learn-the-request-lifecycle">Step 2 — Learn the request
+lifecycle</h2>
+<p>React renders what the user sees. It calls FastAPI over HTTP with a
+bearer token. FastAPI validates the body using Pydantic, checks the
+user’s role, opens a database transaction and returns a typed result.
+The worker handles queued work independently. The browser refreshes the
+incident while its status is investigating or executing.</p>
+<p>The browser cannot be trusted to hide dangerous operations. A
+disabled button is a usability feature; the API role check is the
+security control. Generated <code>/docs</code> OpenAPI documentation
+makes the contract inspectable and lets you try the same requests
+without the UI.</p>
+<p><strong>Why:</strong> a clear request boundary keeps presentation,
+application rules and persistence separate. Each can change without
+giving the browser or model more authority.</p>
+<p><strong>Verify:</strong> call an approval endpoint with the operator
+token. It must be denied even if you write the HTTP request
+manually.</p>
+<h2 id="step-3-create-the-repository-structure">Step 3 — Create the
+repository structure</h2>
+<p>Keep frontend code in <code>apps/web</code>, backend code in
+<code>apps/api/sentinelops</code>, system tests in <code>tests</code>,
+fixtures and measured outputs in <code>evals</code>, infrastructure in
+<code>infra</code>, and explanations in <code>docs</code>. This is a
+monorepo: one repository containing several cooperating
+applications.</p>
+<p>The API and worker import the same Python domain logic. They run as
+separate processes, so shared variables in Python memory do not
+coordinate them. They share database records instead. Environment files
+provide configuration without hard-coding provider keys or production
+addresses.</p>
+<p><strong>Why:</strong> ownership and dependency boundaries are easier
+to understand when the filesystem reflects them. A monorepo also makes a
+change to API and UI contract reviewable in one change.</p>
+<p><strong>Verify:</strong> follow <a
+href="#guide-structure">project-structure.md</a> to the entrypoints and
+trace one endpoint to its workflow and database writes.</p>
+<h2 id="step-4-define-typed-contracts">Step 4 — Define typed
+contracts</h2>
+<p>Incident input has a title, service, severity and description.
+Proposal arguments have a tool-specific schema. Unknown tools and
+unexpected fields should be rejected. Structured model output describes
+a hypothesis; it is not an arbitrary script to execute.</p>
+<p>Use closed choices where the domain is bounded: severity, lifecycle
+states, root-cause categories and tool names. Use free text for human
+descriptions and supporting evidence. Avoid accepting raw SQL or
+arbitrary shell commands merely because that gives the agent
+flexibility.</p>
+<p><strong>Why:</strong> typed boundaries turn malformed output into a
+visible error rather than a surprising side effect. They also create
+stable interfaces for the frontend and tests.</p>
+<p><strong>Verify:</strong> try an unknown tool, invalid service
+identifier, unexpected argument and raw SQL mutation in policy tests.
+Each should fail before an adapter call.</p>
+<h2 id="step-5-persist-incidents-and-jobs-before-running-work">Step 5 —
+Persist incidents and jobs before running work</h2>
+<p>An incident is a record, not a transient prompt. Persist its status
+and investigation result. An investigation request creates a durable
+job. A worker claims available work, performs bounded steps and saves
+the outcome. Lease/recovery rules decide what happens if it crashes.</p>
+<p>Use PostgreSQL in the shared multi-process environment. SQLite is a
+simple local option for learning with one worker; it does not validate
+PostgreSQL row-locking behavior or production throughput. Database
+migrations version schema changes; initial schema creation alone is not
+a safe upgrade strategy.</p>
+<p><strong>Why:</strong> incidents can last longer than an HTTP request
+or process lifetime. Durability makes waiting for approval, auditing and
+recovery possible.</p>
+<p><strong>Verify:</strong> create an incident, stop the worker before
+processing, restart it and see that the queued investigation still runs.
+Inspect the job row and incident status if it fails.</p>
+<h2 id="step-6-build-read-only-tool-adapters">Step 6 — Build read-only
+tool adapters</h2>
+<p>The agent needs observations: deployment history, metrics, logs,
+database diagnostics and runbooks. An adapter translates a typed tool
+call into a provider request. In this version, fixture adapters return
+reproducible system observations and simulate mutations. The MCP server
+exposes a read-only interface; privileged mutation remains behind
+application approval policy.</p>
+<p>For a real integration, define its authentication, timeout, rate
+limit, data redaction, error shape and idempotency contract. Use
+read-only credentials for read tools. A tool labeled “read-only” but
+backed by an administrator database account is not properly
+isolated.</p>
+<p><strong>Why:</strong> integration behavior is a domain boundary.
+Keeping it out of the graph nodes makes failures testable and providers
+replaceable.</p>
+<p><strong>Verify:</strong> invoke a read tool directly in an isolated
+test, confirm its schema and check that it cannot mutate the fixture.
+Never use the MCP server as an unauthenticated route around the API.</p>
+<h2 id="step-7-retrieve-relevant-runbooks">Step 7 — Retrieve relevant
+runbooks</h2>
+<p>RAG means retrieval-augmented generation: fetch relevant documents,
+then provide them as context. A runbook helps the hypothesis and
+recommendation refer to known operational procedures. The local baseline
+ranks curated in-code runbooks using keywords without requiring paid
+embeddings; the database has matching seeded records for browsing.
+PostgreSQL with pgvector provides an extension path for semantic
+retrieval.</p>
+<p>A production ingestion pipeline needs document identifiers, chunk
+boundaries, source permissions, document versions, embedding
+model/version, reindex behavior and deletion propagation. An embedding
+column alone is not a complete RAG system. Never send unrelated secrets
+or unauthorized documents to the model.</p>
+<p><strong>Why:</strong> retrieval makes recommendations grounded in the
+organization’s procedures and reduces reliance on model memory. It also
+creates a measurable component: did the expected document appear among
+the retrieved results?</p>
+<p><strong>Verify:</strong> run retrieval evals and inspect returned
+runbook IDs. Keep the measured local baseline distinct from a future
+semantic retrieval benchmark.</p>
+<h2 id="step-8-implement-an-explicit-langgraph-workflow">Step 8 —
+Implement an explicit LangGraph workflow</h2>
+<p>Use named steps for triage, retrieval, observation collection,
+hypothesis, supporting evidence and proposal. State passes between
+steps. The bounded graph ends at its policy gate. Application code
+routes a supported proposal to approval and routes insufficient evidence
+to human attention.</p>
+<p>The graph describes how investigation proceeds. Durable application
+records describe where the incident stands. Do not assume choosing
+LangGraph automatically configures persistent checkpoints, distributed
+locks or retries. The implementation persists results at job boundaries;
+a production checkpointing strategy must specify how intermediate steps
+resume and how duplicate side effects are prevented.</p>
+<p><strong>Why:</strong> explicit steps make behavior inspectable and
+bounded. You can see which observation produced a recommendation and
+test specific transitions.</p>
+<p><strong>Verify:</strong> inspect the trace view and compare it to the
+workflow diagram. The trace should show observations and decisions, not
+hidden model chain-of-thought.</p>
+<h2 id="step-9-add-optional-model-reasoning">Step 9 — Add optional model
+reasoning</h2>
+<p>In offline demo mode, diagnosis is deterministic over fixture
+observations. With the optional OpenAI configuration, the server can ask
+the Responses API for a structured hypothesis grounded in evidence.
+Configure the model identifier yourself and keep the API key
+server-side.</p>
+<p>Treat model output as untrusted. Validate categories and confidence
+fields. The model does not issue an approval, choose a user’s role or
+supply executable SQL. Provider failure must lead to a documented
+fallback or visible failure; it must never silently permit a
+mutation.</p>
+<p><strong>Why:</strong> model reasoning can help with ambiguity, while
+deterministic code protects invariants that must hold regardless of the
+model’s answer.</p>
+<p><strong>Verify:</strong> test without a key first. Then test model
+mode in staging with recorded token usage and provider errors. This
+workspace has no configured OpenAI credential; live model behavior is
+not part of the recorded local validation.</p>
+<h2 id="step-10-enforce-policy-before-asking-for-approval">Step 10 —
+Enforce policy before asking for approval</h2>
+<p>Maintain a tool registry with typed arguments and risk levels. Read
+tools are permitted with their scopes. Restart and rollback require
+human approval. SQL writes, deletion and unknown tools are blocked. The
+policy function is ordinary application code, independent of the model
+prompt.</p>
+<p>Prefer named database diagnostic queries over model-written SQL. With
+named templates, the application controls the SQL and allowed
+parameters. Production also needs a database account limited to reading
+the allowed tables; application validation and database privileges work
+together.</p>
+<p><strong>Why:</strong> an agent can make a plausible but unsafe
+recommendation. The policy gate prevents that recommendation from
+becoming a privileged tool call.</p>
+<p><strong>Verify:</strong> adversarial policy cases should include
+unknown tools, destructive operations, raw SQL, invalid arguments,
+absent approvals and insufficient roles.</p>
+<h2 id="step-11-bind-human-approval-to-an-exact-proposal">Step 11 — Bind
+human approval to an exact proposal</h2>
+<p>A person must be able to see what will happen: tool, service, target
+version or restart scope, risk and evidence. Approval records who
+authorized it and why. A canonical fingerprint binds the decision to the
+exact action and arguments. Execute is a separate explicit
+operation.</p>
+<p>An approval is not permission for all future actions in that
+incident. If the proposal changes, request another approval. A
+production extension should add expiry, environment/service
+entitlements, separation of duties and policy-defined change
+windows.</p>
+<p><strong>Why:</strong> “approve the incident” is too broad. The
+meaningful unit of approval is a specific remediation in a specific
+context.</p>
+<p><strong>Verify:</strong> mutate a proposal after approval in a test
+and try to execute. It must fail. Also test duplicate requests, approval
+races and a wrong-role caller.</p>
+<h2 id="step-12-execute-with-idempotency-and-safe-recovery">Step 12 —
+Execute with idempotency and safe recovery</h2>
+<p>The execution request includes an idempotency key. The API and worker
+verify current incident state, approval and fingerprint. The simulated
+adapter records its outcome so repeated requests do not apply a second
+mutation.</p>
+<p>In real infrastructure, an adapter may succeed remotely but fail to
+return its response. Automatically retrying can duplicate the mutation.
+Persist intent, pass a provider-supported idempotency key, and reconcile
+remote state after uncertainty. If you cannot prove whether the action
+happened, mark the incident for attention rather than pretending it
+failed safely.</p>
+<p><strong>Why:</strong> distributed systems can produce duplicate
+delivery and ambiguous outcomes. Exactly-once external execution is not
+guaranteed by a single application flag.</p>
+<p><strong>Verify:</strong> execute twice using the same key and inspect
+the mutation ledger and audit trail. Add a provider-specific “response
+lost after success” integration test before enabling real actions.</p>
+<h2 id="step-13-verify-the-operational-outcome">Step 13 — Verify the
+operational outcome</h2>
+<p>After a rollback/restart simulation, query the service again. Compare
+post-action observations with the incident’s success criteria.
+Verification should determine whether error rate or resource pressure
+improved. An adapter returning “OK” proves that its request succeeded,
+not that the incident was solved.</p>
+<p>Write a report with initial observations, evidence, hypothesis,
+action, approver, verification and remaining uncertainty. Keep
+confidential logs out of exports according to the organization’s
+retention and redaction policy.</p>
+<p><strong>Why:</strong> verified outcomes are the business value. A
+system that performs actions without measuring results can make an
+incident worse while reporting success.</p>
+<p><strong>Verify:</strong> run the successful scenarios and
+failure/unknown scenarios; only verified cases may resolve. The fixture
+verification is a simulation, not evidence of production recovery.</p>
+<h2 id="step-14-add-an-audit-trail-and-telemetry">Step 14 — Add an audit
+trail and telemetry</h2>
+<p>Audit events record important decisions. Hash chaining makes edits
+detectable by an integrity verifier, but it is not absolute
+immutability: a privileged database user can rewrite events and
+recompute a chain. Production needs restricted database permissions and
+external append-only/WORM retention or externally anchored hashes.</p>
+<p>Operational telemetry answers a different question: how is the
+application running? The current workflow persists readable trace
+entries; OTEL_CONSOLE_EXPORT=true enables SDK console spans. The
+optional collector is a receiver scaffold; OTLP export and cross-process
+context propagation are not configured. Production structured logs and
+OpenTelemetry spans should carry incident/job identifiers, tool names,
+durations and outcomes, while excluding secrets and raw sensitive
+content. Configure a collector/exporter and dashboards in the
+deployment; instrumentation without collection provides incomplete
+visibility.</p>
+<p><strong>Why:</strong> audits support accountability; telemetry
+supports debugging and reliability. Mixing them risks either missing
+decisions or logging confidential data excessively.</p>
+<p><strong>Verify:</strong> trace one incident from its API request to
+worker completion, inspect the audit actor and run integrity checks.
+Confirm credentials are absent from logs.</p>
+<h2 id="step-15-evaluate-before-claiming-quality">Step 15 — Evaluate
+before claiming quality</h2>
+<p>The supplied synthetic suite records expected causes, evidence,
+tools, recommendations and approval requirements. The evaluator runs the
+actual workflow and calculates observed metrics. The console shows
+measured results only when a report exists.</p>
+<p>Separate deterministic fixture accuracy from live-model accuracy.
+Synthetic latency is not production P95 latency. Simulated remediation
+is not real rollback reliability. Token cost is unknown unless token
+usage and model pricing are recorded; do not assign a fictional dollar
+value.</p>
+<p><strong>Why:</strong> evaluation makes regressions visible and gives
+an interview discussion evidence. Honest scope matters more than
+impressive-looking scores.</p>
+<p><strong>Verify:</strong> run the eval command, open
+<code>evals/results/latest.json</code>, inspect failed cases and compare
+its report to the UI. See <a
+href="#guide-evaluation">evaluation.md</a>.</p>
+<h2 id="step-16-package-reproducibly">Step 16 — Package
+reproducibly</h2>
+<p>Compose starts the database, API, worker and web app with health
+checks. The API container and worker container use the same code image
+and different commands. Named database volumes retain data when
+containers are recreated. <code>.env.example</code> describes expected
+settings; never commit <code>.env</code> secrets.</p>
+<p>CI should install known dependencies, run backend safety tests and
+evals, then type-check/build the frontend. A passing build does not
+prove production readiness; it proves the configured checks passed for
+that revision. Treat dependency upgrades as reviewable changes and
+regenerate locks intentionally.</p>
+<p><strong>Why:</strong> a project that runs only on its author’s
+machine is difficult to review and operate. Repeatable packaging makes
+demonstration and deployment practical.</p>
+<p><strong>Verify:</strong> use the README quick start and CI workflow.
+Docker execution may depend on local daemon access; the validation
+report states what was actually executed in this environment.</p>
+<h2 id="step-17-prepare-a-real-deployment">Step 17 — Prepare a real
+deployment</h2>
+<p>Choose one cloud first. The documented GCP path maps the web/API to
+Cloud Run, PostgreSQL to Cloud SQL, credentials to Secret Manager, and
+the worker to an always-on service or dedicated worker runtime. Optional
+Redis is managed separately. GitHub Actions should authenticate using
+workload identity instead of storing a long-lived cloud key.</p>
+<p>Before production, implement enterprise OAuth/OIDC with
+issuer/audience validation and key rotation, service-scoped RBAC,
+trusted webhook ingestion, migration rollout, backup restore tests,
+worker lease monitoring, adapter-specific idempotency, egress
+restrictions, secret rotation, load tests and incident handling. Tenant
+isolation is necessary if serving multiple customers. Terraform can
+encode the reviewed cloud resources after the architecture and ownership
+rules are settled.</p>
+<p><strong>Why:</strong> production readiness is an operational
+commitment, not a framework list. Provisioning resources does not supply
+safe permissions, restore procedures or a tested integration.</p>
+<p><strong>Verify:</strong> follow <a
+href="#guide-deployment">deployment.md</a>, perform a staging exercise
+and a database restore drill, and complete the production requirements
+in the README. No cloud account was provisioned or deployed by this
+build.</p>
+<h1 id="guide-structure">Project structure and how to navigate it</h1>
+<pre class="text"><code>SentinelOps/
+├── README.md                       Start, scope, demos and documentation map
+├── compose.yaml                    Local web/API/worker/PostgreSQL topology
+├── .env.example                    Documented runtime configuration
+├── Makefile                        Shortcuts for repeatable developer tasks
+├── apps/
+│   ├── api/
+│   │   ├── pyproject.toml          Python dependencies and tool configuration
+│   │   ├── Dockerfile              API/worker image
+│   │   ├── alembic/                Versioned database schema migrations
+│   │   ├── sentinelops/
+│   │   │   ├── main.py             FastAPI app and HTTP routes
+│   │   │   ├── config.py           Typed environment settings
+│   │   │   ├── auth.py             Token validation and role dependencies
+│   │   │   ├── models.py           SQLAlchemy persistence models
+│   │   │   ├── db.py               Database engine/session setup
+│   │   │   ├── workflow.py         LangGraph investigation and policy gate
+│   │   │   ├── adapters.py         Typed fixture observation/mutation adapters
+│   │   │   ├── policy.py           Allowlist, argument validation, approval rules
+│   │   │   ├── worker.py           Durable job claim/process/recovery loop
+│   │   │   ├── audit.py            Append-only events and integrity verification
+│   │   │   ├── runbooks.py         Curated runbooks and retrieval
+│   │   │   ├── seed.py             Idempotent runbook seed command
+│   │   │   ├── migrate.py          Migration entrypoint
+│   │   │   ├── mcp_server.py       Read-only MCP tool interface
+│   │   │   └── evaluate.py         Measured synthetic evaluation runner
+│   │   └── tests/                  Backend unit and safety invariants
+│   └── web/
+│       ├── app/                    Next.js app entrypoint and styling
+│       ├── public/                 Favicon and static assets
+│       ├── package.json            Frontend scripts/dependencies
+│       ├── package-lock.json       Exact npm dependency resolution
+│       └── Dockerfile              Next.js standalone container
+├── tests/                          Workflow/API integration and security checks
+├── evals/
+│   ├── incidents.json              Synthetic observations and expected outcomes
+│   ├── build_fixtures.py            Reproducible corpus construction
+│   └── results/latest.json         Generated measured report; not a made-up score
+├── infra/                          Cloud/telemetry configuration and references
+├── .github/workflows/              Continuous integration
+└── docs/
+    ├── architecture.md             Responsibilities, diagrams and trust boundaries
+    ├── learning-guide.md           Every implementation step and its purpose
+    ├── project-structure.md        This navigation guide
+    ├── security.md                 Permissions, approvals and threat boundaries
+    ├── evaluation.md               Methodology and metric limitations
+    ├── deployment.md               Local/cloud deployment instructions
+    ├── operations.md               Monitoring, recovery and maintenance
+    ├── validation.md               What actually passed in this workspace
+    └── adr/                       Architecture decision records</code></pre>
+<p>The exact tree may contain additional small helper modules. Use
+<code>rg --files</code> to list them. Generated dependencies
+(<code>node_modules</code>, <code>.venv</code>), local SQLite databases,
+secrets and temporary build files are intentionally excluded from the
+source deliverable.</p>
+<h2 id="read-the-code-in-this-order">Read the code in this order</h2>
+<ol type="1">
+<li><strong><code>config.py</code>:</strong> understand demo, model and
+database configuration. Changing a provider key should not require a
+source edit.</li>
+<li><strong><code>models.py</code>:</strong> understand what survives a
+process restart. Inspect incidents, proposals, approvals, jobs and audit
+records.</li>
+<li><strong><code>policy.py</code>:</strong> understand what the system
+is permitted to do. This is the authority boundary, not a model
+instruction.</li>
+<li><strong><code>adapters.py</code> and
+<code>runbooks.py</code>:</strong> understand what observations exist
+and how simulation differs from a real connector.</li>
+<li><strong><code>workflow.py</code>:</strong> follow the steps from
+observations to a recommendation.</li>
+<li><strong><code>worker.py</code>:</strong> see how durable requests
+become work, and how failures are handled.</li>
+<li><strong><code>main.py</code> and <code>auth.py</code>:</strong>
+follow request validation, authentication and role checks.</li>
+<li><strong><code>apps/web/app</code>:</strong> see how the same API
+state becomes evidence, approval controls and reports.</li>
+<li><strong><code>tests</code> and <code>evaluate.py</code>:</strong>
+see which invariants and outcomes are actually checked.</li>
+<li><strong><code>compose.yaml</code>, Dockerfiles and CI:</strong>
+understand how those components run together.</li>
+</ol>
+<h2 id="follow-one-action-through-the-repository">Follow one action
+through the repository</h2>
+<p>For <strong>Investigate</strong>, the React control calls an API
+endpoint. The endpoint validates incident state, writes a durable job
+and audit event, and returns the updated incident. The worker claims the
+job, calls the LangGraph workflow, persists
+evidence/hypothesis/proposal/trace, then updates the lifecycle state.
+Polling returns that persisted result to React.</p>
+<p>For <strong>Execute</strong>, the route requires an approver, a
+matching approved proposal and an idempotency key. The worker rechecks
+the same safety conditions before its adapter call. Verification and
+reporting happen after the action. This repetition is intentional: API
+acceptance does not prove that the state remains valid when the worker
+runs later.</p>
+<h2 id="what-belongs-where-when-extending-it">What belongs where when
+extending it</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Change</th>
+<th>Primary location</th>
+<th>Required companion work</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Add a read-only metrics provider</td>
+<td>Tool adapter module</td>
+<td>Typed arguments, timeout tests, credential scope and redaction</td>
+</tr>
+<tr class="even">
+<td>Add a mutation tool</td>
+<td>Adapter + policy</td>
+<td>Approval binding, idempotency/reconciliation and denial tests</td>
+</tr>
+<tr class="odd">
+<td>Add an incident field</td>
+<td>Models + schema/API</td>
+<td>Migration, UI display and compatibility checks</td>
+</tr>
+<tr class="even">
+<td>Add runbook embedding retrieval</td>
+<td>Runbook retrieval/ingestion</td>
+<td>Vector extension/index, permission filtering and retrieval
+evals</td>
+</tr>
+<tr class="odd">
+<td>Add enterprise OIDC</td>
+<td>Authentication boundary</td>
+<td>Issuer/audience/JWKS validation, key rotation and role mapping</td>
+</tr>
+<tr class="even">
+<td>Add a workflow node</td>
+<td>Workflow</td>
+<td>Trace output, transition tests and failure behavior</td>
+</tr>
+<tr class="odd">
+<td>Change deployment</td>
+<td>Infrastructure</td>
+<td>Secret wiring, health probes, migration order and rollback plan</td>
+</tr>
+</tbody>
+</table>
+<p>Avoid placing policy in UI code or model prompts. Avoid placing
+production credentials in fixtures or eval reports.</p>
+<h1 id="guide-security">Security model and trust boundaries</h1>
+<p>SentinelOps recommends operational changes, so its primary boundary
+is between collecting evidence and performing a mutation. Investigation
+finishes at a policy gate. A separate authenticated human approval and a
+separate execute request are required before a worker can run the
+allowlisted remediation.</p>
+<p>This repository supplies a working demo security boundary and
+simulated operational adapters. Connecting real systems adds credential,
+tenancy, network, recovery, and audit requirements described below.</p>
+<h2 id="treat-incident-input-and-model-output-as-untrusted">1. Treat
+incident input and model output as untrusted</h2>
+<p>Descriptions, logs, runbooks, database results, and model responses
+are evidence. A log reading “the administrator approved this restart”
+does not create an approval. A model returning <code>write_sql</code>
+does not create a new permission. The backend parses proposals against
+typed argument models and an allowlist before presenting or executing
+them.</p>
+<p>The workflow may use a model to form a hypothesis and recommendation.
+The policy module owns authorization. Keeping those decisions separate
+is necessary because a language model is susceptible to mistakes and
+instructions embedded in external content. Model text never becomes a
+shell command, arbitrary SQL statement, or authenticated identity.</p>
+<h2 id="authenticate-the-caller-and-authorize-the-action">2.
+Authenticate the caller and authorize the action</h2>
+<p>Demo mode explicitly enables two local identities:
+<code>operator</code> and <code>approver</code>. The shared demo
+password is for local demonstrations only. Authentication issues a
+short-lived JWT whose signature, issuer, audience, expiry, and permitted
+algorithm must be checked before API access. Protected endpoints derive
+the username and role from the verified token rather than from fields
+supplied by the caller.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Principal</th>
+<th>Permitted work</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unauthenticated</td>
+<td>Liveness/readiness health checks and the login endpoint</td>
+</tr>
+<tr class="even">
+<td>Operator</td>
+<td>Read incidents/runbooks/policy and create/investigate incidents</td>
+</tr>
+<tr class="odd">
+<td>Viewer (identity-provider token)</td>
+<td>Read-only API access; no demo login identity is created</td>
+</tr>
+<tr class="even">
+<td>Approver</td>
+<td>Operator capabilities plus approve, reject, and request
+execution</td>
+</tr>
+<tr class="odd">
+<td>Worker</td>
+<td>Claim durable jobs and independently validate approved
+execution</td>
+</tr>
+</tbody>
+</table>
+<p>An approver role does not imply permission to execute any arbitrary
+request. The execute endpoint and worker also require a persisted
+approval for the current proposal. For production, disable demo login
+and integrate your identity provider, enforce MFA and customer/team
+scoping, and restrict approver membership. The current role model is
+intentionally small and does not implement multitenancy or two-person
+approval.</p>
+<p>Use a strong secret for HS256 in local development. Production should
+supply validated identity-provider tokens and managed keys; RS256
+verification can be configured with a trusted public key. Secrets belong
+in a cloud secret manager with rotation and narrow access, not source
+control or frontend environment variables.</p>
+<h2 id="classify-and-constrain-each-tool">3. Classify and constrain each
+tool</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tools</th>
+<th>Risk</th>
+<th>Enforcement</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Recent deployments, metrics, logs, runbook retrieval</td>
+<td>Low</td>
+<td>Typed read arguments; no approval</td>
+</tr>
+<tr class="even">
+<td>Named database diagnostics</td>
+<td>Medium</td>
+<td>Adapter-owned templates; no raw SQL</td>
+</tr>
+<tr class="odd">
+<td>Restart service, roll back deployment</td>
+<td>High</td>
+<td>Exact proposal approval, role checks, durable execution claim</td>
+</tr>
+<tr class="even">
+<td>Write SQL, delete data, unknown tools</td>
+<td>Blocked</td>
+<td>Rejected before adapter dispatch</td>
+</tr>
+</tbody>
+</table>
+<p>Sensitive database reads can warrant a higher classification in a
+real customer deployment. The demo’s aggregate diagnostics are medium
+risk and do not require mutation approval. Policy should reflect actual
+data exposure and credentials.</p>
+<p><code>validate_tool()</code> rejects unknown arguments, invalid
+types, invalid service identifiers, overlong values, and out-of-range
+limits. Database requests accept only <code>connection_stats</code> or
+<code>slow_queries</code>, never model-supplied SQL. Live
+implementations must use bound parameters and a separate read-only
+database principal with access restricted to necessary views. Named
+templates alone do not protect a broadly privileged database
+credential.</p>
+<h2 id="bind-approval-to-the-exact-action">4. Bind approval to the exact
+action</h2>
+<p>The backend computes a SHA-256 fingerprint over the normalized tool
+name and arguments. Approval persists the proposal ID, fingerprint,
+authenticated approver, reason, and timestamp. Execution recomputes the
+fingerprint and verifies:</p>
+<ol type="1">
+<li>The caller has the approver role.</li>
+<li>The proposal is currently approved.</li>
+<li>Its tool and arguments are still allowlisted and strictly
+typed.</li>
+<li>The persisted approval refers to that proposal and that
+fingerprint.</li>
+<li>The approval identifies a human principal and has valid
+timestamps.</li>
+<li>The idempotency key is valid and agrees with any already-bound
+key.</li>
+</ol>
+<p>Changing the service or deployment target invalidates the original
+approval. An authenticated approver must review a new proposal. The
+fingerprint binds content; it is not a cryptographic signature from an
+external identity provider. A database administrator able to rewrite
+both proposal and approval remains inside the database trust
+boundary.</p>
+<h2 id="separate-approval-scheduling-execution-and-verification">5.
+Separate approval, scheduling, execution, and verification</h2>
+<p>Approval does not run a tool. The execute request creates a durable
+execution record and queues a job. The worker rechecks authorization
+immediately before adapter dispatch. Database uniqueness constraints
+prevent a second execution for the same proposal and bind an idempotency
+key to the incident. Repeating the same request should return its
+existing execution rather than perform another mutation; using a
+different key cannot authorize a replay.</p>
+<p>Database job claims and leases make work survive an API restart.
+PostgreSQL locking is necessary when multiple workers compete. SQLite
+supports the local single-worker demonstration but should not be used to
+infer multi-worker production concurrency guarantees.</p>
+<p>A database transaction cannot atomically commit a change in an
+unrelated cloud service. A worker might crash after the provider
+accepted a mutation but before recording its receipt. Live adapters
+therefore need provider-side idempotency, durable receipts, and
+reconciliation of uncertain outcomes. Treat a high-risk execution with
+an uncertain result as requiring attention instead of automatically
+replaying it.</p>
+<p>After an adapter reports success, verification checks the resulting
+service health. A failed verification must keep the incident unresolved
+and visible for human action. Demo recovery metrics are simulated; a
+live adapter needs independent metrics and a defined observation
+window.</p>
+<h2 id="make-audit-history-tamper-evident">6. Make audit history tamper
+evident</h2>
+<p>Audit events record the actor, action, time, proposal identifiers,
+and relevant details. Each event links to the previous event’s hash,
+creating a chain. This makes accidental or local edits detectable when
+the chain is validated and its earlier head is trusted.</p>
+<p>The application appends events; it does not expose an audit-edit
+endpoint. That is an application-level append-only convention. A
+database administrator can delete events or rewrite the complete chain.
+Hashes stored beside the records do not make the database immutable.</p>
+<p>For stronger production evidence, write audit records to a separate
+restricted sink, retain periodic signed chain heads outside the
+application database, use object retention/WORM controls where required,
+and alert on gaps or integrity failures. Avoid storing raw credentials
+or unnecessary personal data in audit details.</p>
+<h2 id="keep-live-credentials-behind-the-backend-boundary">7. Keep live
+credentials behind the backend boundary</h2>
+<p>Browser code receives only the API URL and its user session token.
+Operational credentials stay on the backend/worker side. Limit CORS
+origins to the deployed UI and use TLS. CORS is a browser policy, not
+authentication; non-browser callers can still reach public endpoints and
+must pass JWT checks.</p>
+<p>The OpenAI integration sends evidence to the configured provider only
+in explicit live-model mode. Review data handling and redaction for real
+incidents. A production MCP adapter must pin trusted servers,
+authenticate its transport, validate tool responses, scope credentials
+by customer and service, and preserve the same local execution gate. An
+MCP connection does not automatically make a tool safe.</p>
+<p>Demo mutations change simulated state. Live adapters fail closed
+until implemented and configured. A flag must not turn a simulator into
+a privileged live operator. Before enabling a real integration, test
+denied permissions, credential expiry, network failures, rate limits,
+partial execution, and reconciliation in staging.</p>
+<h2 id="deploy-with-least-privilege-and-operational-controls">8. Deploy
+with least privilege and operational controls</h2>
+<p>Keep the database and internal services private. Separate API,
+worker, and migration identities; restrict who can approve, who can
+execute, and who can change policy. Use managed backups, restore drills,
+secret rotation, vulnerability updates, request rate limits, bounded
+telemetry payloads, and an incident response process for this platform
+itself.</p>
+<p>The supplied Docker Compose environment is a reproducible local
+deployment. It does not provide public HTTPS, a production identity
+provider, managed database backups, customer isolation, external
+immutable audit retention, or cloud-specific runtime hardening. Those
+are concrete deployment work, not properties obtained from choosing
+FastAPI, LangGraph, or containers.</p>
+<p>See <a href="#guide-evaluation">evaluation.md</a> for the measured
+safety probes and lifecycle tests. Their passing results validate the
+tested paths; production assurance also depends on the real adapters,
+infrastructure configuration, operator procedures, and data
+boundaries.</p>
+<h1 id="guide-evaluation">Evaluating SentinelOps</h1>
+<p>An incident agent can sound convincing while naming the wrong cause
+or recommending a dangerous tool. Evaluation turns those behaviors into
+reviewable measurements. The supplied numbers are generated by running
+code; the repository does not assume target scores.</p>
+<h2 id="freeze-the-questions-before-measuring-the-answers">1. Freeze the
+questions before measuring the answers</h2>
+<p><code>evals/incidents.json</code> contains 64 synthetic incidents: 16
+release-related failures, 16 memory-growth incidents, 16 saturated
+database pools, and 16 ambiguous or healthy observations. They cover
+eight service names and different error rates, release ages, resource
+pressures, connection limits, misleading historical releases, and
+hostile log text.</p>
+<p>Each fixture contains two sections:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Section</th>
+<th>Contents</th>
+<th>Who receives it</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>input</code></td>
+<td>Service, description, explicit metrics/deployments/logs/database
+observations</td>
+<td>Investigation workflow</td>
+</tr>
+<tr class="even">
+<td><code>expected</code></td>
+<td>Root cause, relevant evidence sources and runbook IDs, allowed read
+tools, forbidden tools, recommendation, approval requirement</td>
+<td>Evaluator only</td>
+</tr>
+</tbody>
+</table>
+<p>Every input has <code>scenario: "unknown"</code>. This matters:
+passing a cause-specific scenario such as <code>memory_leak</code> to
+the classifier would give it the answer. The fixture tools expose the
+supplied observations; the classifier must derive its answer from those
+observations. <code>workflow_input()</code> enforces the accepted input
+fields and rejects a non-neutral scenario.</p>
+<p><code>evals/build_fixtures.py</code> reconstructs the checked-in JSON
+from explicit observation rows. Review the JSON, freeze it for a
+comparison, and change its version deliberately when you change the
+benchmark. The report records its SHA-256 hash so two runs can be
+compared against the same data.</p>
+<p>These are integration fixtures designed alongside the rule baseline.
+They are useful regression checks, but they are not an independent test
+set proving generalization to real incidents.</p>
+<h2 id="run-the-real-workflow">2. Run the real workflow</h2>
+<p>From the repository root, install the backend and run:</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> venv .venv</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv/bin/activate</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">-e</span> <span class="st">&#39;apps/api[dev]&#39;</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/api</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.evaluate <span class="at">--output</span> ../../evals/results/latest.json</span></code></pre></div>
+<p>The harness calls
+<code>sentinelops.workflow.investigate_case()</code> for every case,
+with fixture adapters and real orchestration/retrieval/policy code. It
+records wall-clock duration using a monotonic clock. A case that raises
+an exception stays in the denominator and scores zero on the correctness
+checks; it is not silently excluded.</p>
+<p>The default <code>--mode fixture</code> avoids network calls and API
+credentials. Its output identifies itself as
+<code>deterministic_fixture_baseline</code>. A high score means that the
+rules and their integration handle these observations; it does not mean
+an OpenAI model has that accuracy.</p>
+<p>For a separate, explicitly billed live-model run, configure
+<code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL</code>, then run:</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.evaluate <span class="at">--mode</span> openai <span class="at">--output</span> ../../evals/results/openai.json</span></code></pre></div>
+<p>This still uses synthetic telemetry. Keep the output separate from
+<code>latest.json</code> and compare it with the deterministic baseline.
+A live-model request or parsing failure counts as an error; the
+evaluator must not relabel a fixture fallback as a measured live-model
+result. The interface and code should be inspected before sending real
+incident data to an external model.</p>
+<h2 id="understand-exactly-what-each-metric-measures">3. Understand
+exactly what each metric measures</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Formula / observation</th>
+<th>Practical meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Root-cause accuracy</td>
+<td>Correct expected root labels / all 64 cases</td>
+<td>Correctness within the four supplied categories</td>
+</tr>
+<tr class="even">
+<td>Retrieval Recall@5</td>
+<td>Mean of relevant expected runbooks found among the first five
+results / expected relevant runbooks</td>
+<td>Whether the relevant seeded runbook was available</td>
+</tr>
+<tr class="odd">
+<td>Evidence coverage</td>
+<td>Mean of expected evidence source types present / expected source
+types</td>
+<td>Whether required types of evidence were gathered</td>
+</tr>
+<tr class="even">
+<td>Tool-selection accuracy</td>
+<td>Expected mutation tool equals proposed mutation tool, including
+<code>null</code> / all cases</td>
+<td>Whether the action recommendation is appropriate for the
+fixture</td>
+</tr>
+<tr class="odd">
+<td>Read-tool policy adherence</td>
+<td>All recorded investigation calls use validated accepted read tools /
+all cases</td>
+<td>Whether investigation remained inside the read boundary</td>
+</tr>
+<tr class="even">
+<td>Unsafe-action rejection</td>
+<td>Rejected hostile tool inputs / hostile tool probes</td>
+<td>Allowlist and argument validation behavior</td>
+</tr>
+<tr class="odd">
+<td>Approval-policy adherence</td>
+<td>Correct fixture approval gates plus denied unauthorized execution
+probes / both groups combined</td>
+<td>Proposal gates and independent authorization rechecks</td>
+</tr>
+<tr class="even">
+<td>Accepted-control accuracy</td>
+<td>Valid calls accepted / valid controls</td>
+<td>Detects a broken policy that rejects everything</td>
+</tr>
+<tr class="odd">
+<td>Latency P50/P95</td>
+<td>Nearest-rank percentiles of local per-case wall time</td>
+<td>Repeatable local investigation overhead, subject to host load</td>
+</tr>
+</tbody>
+</table>
+<p>Approval-policy adherence combines two different kinds of checks. The
+report preserves per-case outcomes and individual policy probes so a
+reviewer can inspect their denominators separately. Safety probes
+include unknown tools, write/delete tools, raw SQL, extra fields,
+invalid template names, wrong roles, missing/expired approvals, changed
+tool arguments, changed fingerprints, and changed bound idempotency
+keys.</p>
+<p>The report deliberately sets <code>successful_remediation</code> and
+<code>average_llm_cost_usd</code> to <code>null</code>: this harness
+stops at the approval gate and does not collect provider billing or
+execute approved remediations. Demo remediation and verification are
+exercised in the lifecycle tests. Their success is simulator behavior,
+not a production recovery rate.</p>
+<p>Several tempting interpretations are incorrect:</p>
+<ul>
+<li>Source presence does not prove that the explanation accurately cites
+its evidence. Add human or structured evidence-grounding review for
+that.</li>
+<li>Retrieving among four runbooks can yield generous Recall@5. Evaluate
+a larger, distractor-rich collection before selecting a production
+retrieval strategy.</li>
+<li>Rule-generated confidence is not calibrated probability. Do not
+display it as a measured likelihood of correctness.</li>
+<li>Local fixture latency does not include real telemetry providers,
+network queues, model calls, or customer database performance.</li>
+<li>One adversarial log example does not establish resistance to all
+prompt injections. Maintain an expanding attack suite and keep policy
+enforcement outside the model.</li>
+</ul>
+<h2 id="verify-the-full-human-approval-lifecycle">4. Verify the full
+human approval lifecycle</h2>
+<p>From the repository root:</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pytest tests apps/api/tests</span></code></pre></div>
+<p>The tests call FastAPI through its test client, use a temporary
+SQLite database, and drain queued jobs explicitly. No production system
+is contacted. Their purpose is to check boundaries that a workflow-only
+score cannot see: unauthenticated requests, wrong roles, execution
+before approval, rejected proposals, fingerprints changed after
+approval, duplicate idempotency keys, and simulated verification
+failure.</p>
+<p>The policy unit tests also check strict typed arguments and named
+read-only query templates. A read-only string beginning with
+<code>SELECT</code> is not sufficient protection: it could still expose
+data or contain unsafe SQL. SentinelOps instead accepts adapter-owned
+template names and rejects SQL strings entirely.</p>
+<h2 id="add-stronger-evaluation-before-customer-use">5. Add stronger
+evaluation before customer use</h2>
+<p>Begin with anonymized historical incidents reviewed by operators.
+Include incidents the agent should refuse to diagnose, missing
+telemetry, competing hypotheses, contradictory evidence, stale runbooks,
+compromised logs, and provider outages. Keep development and holdout
+sets separate. Record the model, prompt, tool schemas, retrieval
+version, and dataset hash with each run.</p>
+<p>Next, test model calls with real usage records so token count and
+cost are measurable. Add calibrated confidence and evidence-grounding
+review, and measure a complete approved remediation in a controlled
+staging system. Successful recovery should mean the system stayed
+healthy for a defined observation window, not simply that a mutation API
+returned 200.</p>
+<p>Finally, set release gates appropriate to the customer. Safety
+failures should block a release. Accuracy thresholds need a baseline, a
+representative held-out dataset, and an explicit tolerance for
+abstaining. The included CI gates validate this implementation and its
+fixtures; they do not certify production readiness.</p>
+<h1 id="guide-deployment">Run and deploy SentinelOps</h1>
+<p>The supplied implementation runs a complete local demonstration:
+browser, API, durable investigation/execution worker, PostgreSQL and
+approval workflow. It uses simulated operational evidence and mutations
+by default. A production deployment needs an identity provider, real
+read-only adapters, reviewed remediation adapters and operations
+controls. No cloud resources have been created by this project.</p>
+<h2 id="understand-what-runs-where">1. Understand what runs where</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Local runtime</th>
+<th>Purpose and reason</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Browser UI</td>
+<td>Next.js, port 3000</td>
+<td>Lists incidents, shows evidence and lets authorized humans review
+proposals.</td>
+</tr>
+<tr class="even">
+<td>API</td>
+<td>FastAPI, port 8000</td>
+<td>Validates input, authenticates callers, enforces roles and saves
+state.</td>
+</tr>
+<tr class="odd">
+<td>Worker</td>
+<td>Separate Python process</td>
+<td>Runs slow investigations and approved execution without occupying an
+HTTP request.</td>
+</tr>
+<tr class="even">
+<td>PostgreSQL</td>
+<td>PostgreSQL 16 with pgvector</td>
+<td>Persists incidents, jobs, proposals, evidence and audit events
+across process restarts.</td>
+</tr>
+<tr class="odd">
+<td>Migration task</td>
+<td>One-off Python process</td>
+<td>Installs versioned schema changes before API/worker start. Seeds
+runbook content.</td>
+</tr>
+<tr class="even">
+<td>Redis</td>
+<td>Optional <code>cache</code> profile</td>
+<td>Future cache/rate-limit infrastructure; the current queue does not
+use Redis.</td>
+</tr>
+<tr class="odd">
+<td>OpenTelemetry collector</td>
+<td>Optional <code>telemetry</code> profile</td>
+<td>Receiver scaffold for future instrumentation; current workflow
+traces are database records.</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid"><code>flowchart LR
+  Browser[Browser] --&gt;|HTTP localhost:3000| Web[Next.js web]
+  Browser --&gt;|Bearer JWT HTTP localhost:8000| API[FastAPI API]
+  API --&gt;|Persist jobs and approvals| DB[(PostgreSQL + pgvector)]
+  Worker[Durable worker] --&gt;|Claim jobs using locks and leases| DB
+  Worker --&gt;|Read fixture evidence / simulate mutation| Tools[Demo tools + LangGraph workflow]
+  Init[Migration + runbook seed] --&gt; DB
+  Redis[(Optional Redis cache)]
+  OTEL[Optional telemetry receiver]</code></pre>
+<p>The browser connects directly to the API.
+<code>NEXT_PUBLIC_API_URL</code> must therefore be an address the
+browser can reach; <code>http://api:8000</code> is only a Docker network
+address and will not work from a host browser. Next.js embeds
+<code>NEXT_PUBLIC_*</code> values during the build, so changing an API
+URL requires rebuilding the web image.</p>
+<h2 id="install-the-local-prerequisites">2. Install the local
+prerequisites</h2>
+<p>Use Git and Docker Engine/Desktop with Compose v2. The native
+alternative needs Python 3.12 and Node.js 22. Docker provides consistent
+PostgreSQL, Python and Node runtimes without installing each
+database/runtime on your machine. Your machine needs access to npm, PyPI
+and container registries for the first build.</p>
+<h2 id="choose-explicit-local-configuration">3. Choose explicit local
+configuration</h2>
+<p>From the repository root:</p>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example .env</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose config <span class="at">--quiet</span></span></code></pre></div>
+<p>The sample contains clearly labeled development credentials.
+<code>DEMO_MODE=true</code> enables <code>operator</code> and
+<code>approver</code> accounts with password <code>sentinel-demo</code>;
+<code>LLM_MODE=fixture</code> uses deterministic fixture reasoning
+without a paid model key. All live mutations remain disabled.
+Configuration validation catches malformed Compose before building;
+<code>--quiet</code> avoids displaying rendered credential values.</p>
+<p>The checked-in signing key is long enough for the demo but is public
+knowledge. It does not provide security for an Internet-facing service.
+Keep the default loopback bindings while using demo credentials.
+Changing the password in <code>.env</code> does not change credentials
+inside an already initialized PostgreSQL volume; use an explicit
+database password rotation or reset the local volume.</p>
+<h2 id="build-and-start-the-full-stack">4. Build and start the full
+stack</h2>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose up <span class="at">--build</span> <span class="at">-d</span> <span class="at">--wait</span></span></code></pre></div>
+<p>Compose waits for PostgreSQL, runs the schema migrations and runbook
+seed, then starts API, worker and web. Health checks verify API database
+readiness, worker process liveness and the frontend HTTP response.
+<code>make up</code> is the same command.</p>
+<p>Open <code>http://localhost:3000</code>. API documentation is at
+<code>http://localhost:8000/docs</code>. Only web/API ports are
+published by default, both on loopback. PostgreSQL and Redis stay on the
+private Compose network. The PostgreSQL named volume survives ordinary
+stops; the optional Redis volume is a cache volume. Source code is baked
+into images, so code changes require a rebuild.</p>
+<h2 id="verify-the-complete-workflow">5. Verify the complete
+workflow</h2>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> infra/smoke_test.py</span></code></pre></div>
+<p>This script uses the HTTP API to create a checkout incident, waits
+for the worker, checks the expected hypothesis, confirms an operator
+cannot approve, approves as the approver, queues execution and checks
+simulated resolution. It repeats the same execution key to exercise
+idempotency. It leaves one labeled test incident in the demo database so
+you can inspect its evidence and audit trail in the UI.</p>
+<p>This is different from a page-load check: it verifies that the queue,
+worker, policy and database cooperate through their real service
+boundary.</p>
+<h2 id="run-tests-and-measured-evaluations">6. Run tests and measured
+evaluations</h2>
+<p>For native developer tooling, create the virtual environment in
+<code>work/</code>:</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3.12</span> <span class="at">-m</span> venv work/venv</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="bu">.</span> work/venv/bin/activate</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">--require-hashes</span> <span class="at">-r</span> apps/api/requirements-dev.lock</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">--no-deps</span> <span class="at">--no-build-isolation</span> <span class="at">-e</span> apps/api</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pytest tests apps/api/tests <span class="at">-q</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example apps/api/.env</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> apps/api</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.evaluate <span class="at">--output</span> ../../evals/results/latest.json</span></code></pre></div>
+<p>The runtime and developer lockfiles pin the same runtime versions and
+include artifact hashes. The developer lock adds test tooling. CI
+installs those exact dependencies, runs both test suites and measured
+fixture evaluations, checks TypeScript, builds Next.js, then builds/runs
+the complete Compose stack and smoke test. The fixture evaluation report
+measures this simulated baseline; it is not a claim about model accuracy
+against real incidents.</p>
+<p>Compose mounts <code>evals/results/</code> read-only into the API, so
+a newly generated report is available through the evaluations endpoint
+without rebuilding the API image. The mounted directory must exist and
+have host-readable permissions. A cloud image includes the report
+present at image build time instead of this local mount.</p>
+<h2 id="run-without-docker-when-learning-each-process">7. Run without
+Docker when learning each process</h2>
+<p>After installing the locked Python dependencies, copy
+<code>.env.example</code> into <code>apps/api/.env</code>. That location
+matters: settings read <code>.env</code> relative to the process working
+directory. The copied sample selects SQLite, disables pgvector and
+points evaluations to the root report.</p>
+<p>In separate terminals, activate the same virtual environment and
+run:</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal 1, from apps/api</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.migrate</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.seed</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="ex">uvicorn</span> sentinelops.main:app <span class="at">--host</span> 127.0.0.1 <span class="at">--port</span> 8000</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal 2, also from apps/api</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> sentinelops.worker</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal 3, from apps/web</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> ci</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run dev</span></code></pre></div>
+<p>SQLite is a convenient single-machine fallback. It is not the
+deployment choice for concurrent API/worker replicas; PostgreSQL row
+locking is necessary for that mode. The same worker/application
+separation is retained even in native mode.</p>
+<h2 id="stop-inspect-or-intentionally-reset">8. Stop, inspect, or
+intentionally reset</h2>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose logs <span class="at">--tail</span><span class="op">=</span>100 api worker migrate</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose down</span></code></pre></div>
+<p>Ordinary <code>down</code> keeps database data.
+<code>docker compose down --volumes</code> intentionally deletes local
+database/cache data; use it only when you want a fresh demo. See
+<code>operations.md</code> for failure recovery and backup guidance.</p>
+<h2 id="production-architecture-on-google-cloud">Production architecture
+on Google Cloud</h2>
+<pre class="mermaid"><code>flowchart LR
+  User[Browser] --&gt;|HTTPS| Web[Cloud Run web]
+  User --&gt;|HTTPS + organization-issued JWT| API[Cloud Run API]
+  API --&gt;|Cloud SQL connector socket| SQL[(Cloud SQL PostgreSQL)]
+  Worker[Cloud Run worker: CPU always allocated, minimum 1] --&gt; SQL
+  Worker --&gt; Adapters[Reviewed adapters to real operational services]
+  API --&gt; Secrets[Secret Manager]
+  Worker --&gt; Secrets
+  Migration[Cloud Run migration job] --&gt; SQL
+  Registry[Artifact Registry: immutable images] --&gt; API
+  Registry --&gt; Web
+  Registry --&gt; Worker
+  Redis[(Optional Memorystore Redis)]
+  Logs[Cloud Logging + monitoring]
+  API --&gt; Logs
+  Worker --&gt; Logs</code></pre>
+<p>Cloud Run supplies HTTPS and managed container scheduling. Cloud SQL
+supplies a managed PostgreSQL database with backup/PITR options.
+Artifact Registry holds versioned container images. Secret Manager
+supplies credentials without putting them in git or browser bundles.
+Separate service accounts limit each component’s cloud permissions.
+These are infrastructure capabilities, not substitutes for application
+approval checks or evidence quality.</p>
+<p>The database-polling worker cannot use request-only CPU or scale to
+zero: no incoming HTTP request wakes it when an API inserts a database
+job. Its template sets CPU always allocated and a minimum of one
+instance. The included <code>infra/worker_service.py</code> wrapper
+starts the worker and binds Cloud Run’s <code>PORT</code> for health
+checks. This adds an always-running worker cost. A later queue-triggered
+design could use Cloud Tasks/Pub/Sub with an explicit delivery/lease
+contract; those integrations are not implemented here.</p>
+<h2 id="production-prerequisites-in-order">Production prerequisites, in
+order</h2>
+<ol type="1">
+<li><strong>Identity:</strong> disable demo login, configure an
+organization token issuer and RS256 public verification key, and map
+signed <code>sub</code>/<code>role</code> claims to the allowed roles
+(<code>viewer</code>, <code>operator</code>, <code>approver</code>).
+Tokens must also contain <code>iat</code>, <code>nbf</code>,
+<code>exp</code>, matching <code>iss</code> and
+<code>aud=sentinelops-api</code>. The sample UI currently supports demo
+login, so a real SSO/token acquisition flow must be added before
+deployment is useful to end users. Never give the API an identity
+provider’s private key. JWKS fetching/automatic key rotation is not
+implemented.</li>
+<li><strong>Live evidence adapters:</strong> replace fixture evidence
+with scoped monitoring, logs, deployment and read-only database
+adapters; test access in staging.</li>
+<li><strong>Remediation adapters:</strong> implement allowlisted typed
+live operations, upstream idempotency/reconciliation and least-privilege
+credentials. The existing live mode fails closed. Setting an environment
+flag does not create these adapters.</li>
+<li><strong>Database and IAM:</strong> choose project/region, create
+Cloud SQL PostgreSQL 16, database roles, backup retention and service
+accounts. Use an owner/migration database account for DDL and a
+restricted runtime account for normal DML.</li>
+<li><strong>Operational controls:</strong> review load/cost limits,
+alerting, data retention, encrypted external audit retention and restore
+drills. A database hash chain alone does not stop an administrator
+rewriting history.</li>
+</ol>
+<p>The supplied manifests deliberately set <code>DEMO_MODE=false</code>
+and <code>LIVE_TOOLS_ENABLED=false</code>. They are a deployment
+scaffold for completing these prerequisites, not a claim that the
+prototype is production-ready.</p>
+<h2 id="reviewable-cloud-run-deployment-steps">Reviewable Cloud Run
+deployment steps</h2>
+<p>These commands describe actions to run in your own authorized GCP
+deployment session. They have not been executed against a cloud project
+here.</p>
+<ol type="1">
+<li><p>Create an Artifact Registry Docker repository and Cloud SQL
+instance in your chosen region. Enable Cloud Run, Artifact Registry,
+Cloud SQL Admin and Secret Manager APIs. Create API, worker, web and
+migration service accounts. Grant API/worker/migration
+<code>roles/cloudsql.client</code>; grant secret access only to each
+account’s relevant secret. The web account needs no SQL or credential
+access. Cloud SQL IAM grants connector access; PostgreSQL role
+privileges independently control what SQL that connection can execute.
+If your instance uses only a private IP, add the required VPC/Direct VPC
+egress configuration; the supplied socket annotation alone does not
+configure that network path.</p></li>
+<li><p>Create database users/roles. Use a separate migration database
+owner and a runtime role with only the required table privileges. Grant
+runtime privileges after initial migrations and maintain those grants
+for future tables. Install the supported <code>vector</code> extension
+as the database owner if you intend to develop embedding retrieval;
+baseline retrieval works without it.</p></li>
+<li><p>Store runtime and migration database connection strings in
+separate Secret Manager secrets. A Cloud SQL Unix socket DSN has this
+form; URL-encode username and password characters before constructing
+it:</p>
+<pre class="text"><code>postgresql+psycopg://USER:URL_ENCODED_PASSWORD@/sentinelops?host=/cloudsql/PROJECT:REGION:INSTANCE</code></pre>
+<p>Store the IdP RS256 public key in the verification-key secret. Use
+explicit secret version numbers for repeatable releases. Do not paste
+secrets into rendered YAML or command histories.</p></li>
+<li><p>Build and push the API image and web image. The web build must
+know the final public API origin; reserve/map a stable origin or obtain
+the API service URL before building web. Prefer immutable image digests
+in manifest variables:</p>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">API_BUILD_TAG</span><span class="op">=</span><span class="st">&#39;REGION-docker.pkg.dev/PROJECT/REPOSITORY/api:RELEASE&#39;</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">WEB_BUILD_TAG</span><span class="op">=</span><span class="st">&#39;REGION-docker.pkg.dev/PROJECT/REPOSITORY/web:RELEASE&#39;</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">API_ORIGIN</span><span class="op">=</span><span class="st">&#39;https://YOUR-API-ORIGIN&#39;</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> auth configure-docker <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">-docker.pkg.dev&quot;</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-f</span> apps/api/Dockerfile <span class="at">-t</span> <span class="st">&quot;</span><span class="va">$API_BUILD_TAG</span><span class="st">&quot;</span> .</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> push <span class="st">&quot;</span><span class="va">$API_BUILD_TAG</span><span class="st">&quot;</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">--build-arg</span> NEXT_PUBLIC_API_URL=<span class="st">&quot;</span><span class="va">$API_ORIGIN</span><span class="st">&quot;</span> <span class="at">-t</span> <span class="st">&quot;</span><span class="va">$WEB_BUILD_TAG</span><span class="st">&quot;</span> apps/web</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> push <span class="st">&quot;</span><span class="va">$WEB_BUILD_TAG</span><span class="st">&quot;</span></span></code></pre></div></li>
+<li><p>Resolve the pushed image digests in Artifact Registry, then set
+non-secret variables for immutable image references, resource IDs and
+version numbers:</p>
+<div class="sourceCode" id="cb37"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">API_IMAGE</span><span class="op">=</span><span class="st">&#39;REGION-docker.pkg.dev/PROJECT/REPOSITORY/api@sha256:DIGEST&#39;</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">WEB_IMAGE</span><span class="op">=</span><span class="st">&#39;REGION-docker.pkg.dev/PROJECT/REPOSITORY/web@sha256:DIGEST&#39;</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">CLOUD_SQL_CONNECTION_NAME</span><span class="op">=</span><span class="st">&#39;PROJECT:REGION:INSTANCE&#39;</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">API_SERVICE_ACCOUNT</span><span class="op">=</span><span class="st">&#39;sentinelops-api@PROJECT.iam.gserviceaccount.com&#39;</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">WORKER_SERVICE_ACCOUNT</span><span class="op">=</span><span class="st">&#39;sentinelops-worker@PROJECT.iam.gserviceaccount.com&#39;</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">WEB_SERVICE_ACCOUNT</span><span class="op">=</span><span class="st">&#39;sentinelops-web@PROJECT.iam.gserviceaccount.com&#39;</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">MIGRATION_SERVICE_ACCOUNT</span><span class="op">=</span><span class="st">&#39;sentinelops-migrate@PROJECT.iam.gserviceaccount.com&#39;</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">DATABASE_SECRET_VERSION</span><span class="op">=</span><span class="st">&#39;1&#39;</span></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">MIGRATION_DATABASE_SECRET_VERSION</span><span class="op">=</span><span class="st">&#39;1&#39;</span></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">JWT_KEY_VERSION</span><span class="op">=</span><span class="st">&#39;1&#39;</span></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">JWT_ISSUER</span><span class="op">=</span><span class="st">&#39;https://YOUR-IDENTITY-ISSUER&#39;</span></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">WEB_ORIGIN</span><span class="op">=</span><span class="st">&#39;https://YOUR-WEB-ORIGIN&#39;</span></span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> infra/gcp/render.py <span class="at">--output</span> work/gcp-rendered</span></code></pre></div></li>
+<li><p>Review the rendered manifests. Create/execute the migration job
+before serving traffic, then deploy API, worker and web in that
+order:</p>
+<div class="sourceCode" id="cb38"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> run jobs replace work/gcp-rendered/migrate.job.yaml <span class="at">--region</span> <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">&quot;</span> <span class="at">--project</span> <span class="st">&quot;</span><span class="va">$PROJECT_ID</span><span class="st">&quot;</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> run jobs execute sentinelops-migrate <span class="at">--wait</span> <span class="at">--region</span> <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">&quot;</span> <span class="at">--project</span> <span class="st">&quot;</span><span class="va">$PROJECT_ID</span><span class="st">&quot;</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> run services replace work/gcp-rendered/api.service.yaml <span class="at">--region</span> <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">&quot;</span> <span class="at">--project</span> <span class="st">&quot;</span><span class="va">$PROJECT_ID</span><span class="st">&quot;</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> run services replace work/gcp-rendered/worker.service.yaml <span class="at">--region</span> <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">&quot;</span> <span class="at">--project</span> <span class="st">&quot;</span><span class="va">$PROJECT_ID</span><span class="st">&quot;</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a><span class="ex">gcloud</span> run services replace work/gcp-rendered/web.service.yaml <span class="at">--region</span> <span class="st">&quot;</span><span class="va">$REGION</span><span class="st">&quot;</span> <span class="at">--project</span> <span class="st">&quot;</span><span class="va">$PROJECT_ID</span><span class="st">&quot;</span></span></code></pre></div></li>
+<li><p>Set invocation IAM deliberately. The direct-browser design
+requires publicly reachable web/API at the Cloud Run layer, while the
+API still enforces JWTs. An organization requiring Cloud Run IAM/IAP
+must add a trusted session/token proxy or compatible gateway flow;
+browser app JWTs do not automatically satisfy Cloud Run IAM. Keep the
+worker internal with no public invoker permission.</p></li>
+<li><p>Check readiness, submit a staging incident using real signed
+tokens, verify role denial/approval, and confirm the worker processes
+jobs while receiving no requests. Confirm backup restore, alert delivery
+and identity key rotation before sending production traffic. Do not run
+the demo smoke script against a production service; demo login must be
+disabled there.</p></li>
+</ol>
+<p>Memorystore Redis is optional and unused by this implementation. If
+future code uses it, add private networking/Direct VPC egress,
+authentication where supported, memory limits and cache eviction policy.
+Do not introduce an extra managed service solely because a reference
+diagram contains Redis.</p>
+<p>Terraform is a suitable later layer for provisioning project
+services, IAM, SQL, Secret Manager references, registries and
+networking. Region, availability, budget and retention must be chosen
+first; the included Cloud Run YAML templates do not claim to provision
+that entire platform or to have passed a cloud apply.</p>
+<h1 id="guide-operations">Operate and troubleshoot SentinelOps</h1>
+<p>An API returning 200 is not enough. The API must reach the database,
+workers must claim jobs, proposals must remain unchanged between
+approval and execution, and the audit trail must record each transition.
+The local stack demonstrates those boundaries; production integrations
+need additional provider-side reconciliation.</p>
+<h2 id="health-and-progress">Health and progress</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Signal</th>
+<th>Meaning</th>
+<th>Limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>API <code>/health/live</code></td>
+<td>HTTP process responds</td>
+<td>Does not prove database or queue availability.</td>
+</tr>
+<tr class="even">
+<td>API <code>/health/ready</code></td>
+<td>API can query the database</td>
+<td>Does not prove a worker is consuming jobs.</td>
+</tr>
+<tr class="odd">
+<td>Worker wrapper <code>/health/live</code></td>
+<td>Supervised worker process is alive</td>
+<td>Does not prove a job is making progress.</td>
+</tr>
+<tr class="even">
+<td>Queued-job age / expired leases</td>
+<td>Work is waiting or stalled</td>
+<td>Requires a monitoring query/exporter in production.</td>
+</tr>
+<tr class="odd">
+<td>Incident trace + audit</td>
+<td>Stored workflow and authorization history</td>
+<td>Needs external retention for stronger tamper resistance.</td>
+</tr>
+</tbody>
+</table>
+<p>The prototype does not ship a worker-heartbeat exporter, Prometheus
+endpoint or complete remote OpenTelemetry pipeline. Application logs are
+structured JSON; <code>OTEL_CONSOLE_EXPORT=true</code> optionally
+exports workflow spans to console output. The optional collector is a
+receiver scaffold, and no traces are automatically exported to it.
+Database workflow traces are the UI’s current source of step timing and
+status.</p>
+<h2 id="useful-local-commands">Useful local commands</h2>
+<div class="sourceCode" id="cb39"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose ps</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose logs <span class="at">--tail</span><span class="op">=</span>100 api worker migrate</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">--fail</span> http://127.0.0.1:8000/health/ready</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> infra/smoke_test.py</span></code></pre></div>
+<p>For database inspection without publishing a database port:</p>
+<div class="sourceCode" id="cb40"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose exec postgres psql <span class="at">-U</span> sentinelops <span class="at">-d</span> sentinelops</span></code></pre></div>
+<p>If a host tool needs a port, opt into the loopback override:</p>
+<div class="sourceCode" id="cb41"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> compose.yaml <span class="at">-f</span> infra/compose.debug.yaml <span class="at">--profile</span> cache up <span class="at">-d</span></span></code></pre></div>
+<p>The optional Redis cache is not required to process incidents.
+Restarting it has no effect on the database-backed job queue in this
+version.</p>
+<h2 id="when-something-fails">When something fails</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symptom</th>
+<th>What to check</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Browser cannot reach API</td>
+<td>Browser-visible <code>NEXT_PUBLIC_API_URL</code>; rebuild web; exact
+<code>CORS_ORIGINS</code></td>
+<td>Next public variables are embedded at build time, and CORS matches
+full origins.</td>
+</tr>
+<tr class="even">
+<td>Login returns 403</td>
+<td><code>DEMO_MODE</code> and intended deployment identity</td>
+<td>Demo login is intentionally unavailable outside explicit demo
+mode.</td>
+</tr>
+<tr class="odd">
+<td>Login/auth returns 503</td>
+<td>Signing algorithm and verification-key configuration</td>
+<td>Authentication fails closed rather than accepting unverifiable
+tokens.</td>
+</tr>
+<tr class="even">
+<td>Migration container exits</td>
+<td>Migration logs, DB credentials, extension permissions</td>
+<td>API/worker wait for the schema task to succeed.</td>
+</tr>
+<tr class="odd">
+<td>Incident stays investigating/executing</td>
+<td>Worker process, job status/lease, adapter timeout</td>
+<td>API only queues work; a stalled worker cannot be fixed by reloading
+the page.</td>
+</tr>
+<tr class="even">
+<td>API ready becomes 503</td>
+<td>DB availability, network/socket, credential rotation</td>
+<td>Readiness checks include a database query.</td>
+</tr>
+<tr class="odd">
+<td>Live action fails</td>
+<td>Missing reviewed live adapter</td>
+<td>Flags cannot turn a simulated adapter into a production
+operation.</td>
+</tr>
+<tr class="even">
+<td>Evaluations show not run</td>
+<td><code>EVAL_REPORT_PATH</code>, report existence and readability</td>
+<td>The API reads a measured report artifact, not invented
+percentages.</td>
+</tr>
+</tbody>
+</table>
+<p>Do not repeatedly queue execution or alter database status fields to
+bypass a failed approval. Read the incident’s trace, proposal, audit and
+job state first. Keep the original idempotency key when retrying the
+same execution request.</p>
+<h2 id="queue-recovery-and-mutation-boundaries">Queue recovery and
+mutation boundaries</h2>
+<p>Investigation and execution jobs are stored in PostgreSQL. Worker
+claims use locks and leases; explicit retry/recovery logic distinguishes
+read-only work from potentially ambiguous mutation outcomes. A process
+crash during investigation can be retried within those boundaries. A
+crash after a live provider changed state but before the application
+recorded success cannot be made safe by a database lease alone. Future
+adapters must support an upstream idempotency key or reconcile the
+actual provider state before retrying. An ambiguous live outcome needs
+human review.</p>
+<p>The same distinction applies during rolling deployments. Even with a
+maximum of one worker replica, old and new revisions can overlap during
+replacement. Locks prevent concurrent claims of one healthy leased job;
+they do not constitute a global exactly-once promise for arbitrary
+remote APIs.</p>
+<p>The worker stops taking new jobs on SIGTERM and attempts to finish
+the current job. Container/cloud shutdown deadlines can still interrupt
+long-running work. Bound adapter calls with timeouts, make lease
+duration/renewal consistent with workload duration, and test
+interruption at each mutation boundary before integrating a real
+remediation tool.</p>
+<h2 id="approvals-and-audit">Approvals and audit</h2>
+<p>Approve only after reviewing evidence and typed tool arguments.
+Approval records the exact proposal fingerprint. Execution independently
+checks the caller’s role, approval, fingerprint, policy and idempotency
+key. Approval itself does not execute. Rejecting a proposal leaves a
+reviewable record rather than silently changing it.</p>
+<p>Audit events are hash chained to expose changes/reordering during
+verification. PostgreSQL triggers reject update, delete and truncate
+operations on audit events through the normal database path. A
+privileged database administrator can disable those controls, rewrite
+the events and recompute the chain. For production, export to
+independently controlled append-only storage with retention/immutability
+controls, record external chain checkpoints, restrict DDL and privileged
+database access, and alert on missing exports. Those controls are
+deployment work and are not claimed by the local hash chain.</p>
+<p>Avoid logging bearer tokens, signing keys, database passwords, raw
+credentials or unnecessary incident/log personal data. Apply
+retention/redaction policies to evidence, reports and audit details.
+Local container logs are diagnostic output, not durable audit
+retention.</p>
+<h2 id="backup-and-restore">Backup and restore</h2>
+<p>The PostgreSQL named volume protects against ordinary container
+replacement; it is not a backup. For a local demo, create a
+custom-format dump and copy it out of the database container:</p>
+<div class="sourceCode" id="cb42"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose exec postgres pg_dump <span class="at">-U</span> sentinelops <span class="at">-d</span> sentinelops <span class="at">-Fc</span> <span class="at">-f</span> /tmp/sentinelops.dump</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> work/backups</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose cp postgres:/tmp/sentinelops.dump work/backups/sentinelops.dump</span></code></pre></div>
+<p>For a restore rehearsal, use a separate test database:</p>
+<div class="sourceCode" id="cb43"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose exec postgres createdb <span class="at">-U</span> sentinelops sentinelops_restore</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose cp work/backups/sentinelops.dump postgres:/tmp/sentinelops-restore.dump</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose exec postgres pg_restore <span class="at">-U</span> sentinelops <span class="at">-d</span> sentinelops_restore <span class="at">--no-owner</span> /tmp/sentinelops-restore.dump</span></code></pre></div>
+<p>Do not point running production workers at a restored historical
+queue: old execution jobs can refer to actions already performed
+externally. Restore into an isolated environment with live tools
+disabled, inspect/reconcile job state and approvals, and plan the
+cutover before starting any worker.</p>
+<p>In Cloud SQL, configure automated backups and point-in-time recovery
+according to the required recovery point/time. Test restoring into a
+different instance and verify incident, proposal and audit
+relationships. Store any exported dumps in restricted encrypted storage.
+Document who can restore and how external action state will be
+reconciled.</p>
+<h2 id="release-and-rollback">Release and rollback</h2>
+<ol type="1">
+<li>Run locked dependency installation, security/workflow tests, fixture
+evaluations, TypeScript checks, frontend build and the full-stack smoke
+test.</li>
+<li>Build immutable images. Record image digests, migration revision and
+measured fixture-report version. Use explicit Secret Manager
+versions.</li>
+<li>Back up the database and inspect schema compatibility. Apply
+migration once with the migration identity before promoting API/worker
+revisions.</li>
+<li>Deploy into staging, verify readiness and a role-controlled
+workflow, then promote the exact images/configuration.</li>
+<li>For a code rollback, restore the previous image revision only if it
+can read the current schema. A container rollback does not undo schema
+changes or remote mutations. Prefer forward fixes/expand-contract
+migrations over destructive downgrades.</li>
+</ol>
+<p>The GitHub workflow runs checks and artifacts; it does not deploy,
+hold cloud credentials or automatically promote changes to a production
+service.</p>
+<h2 id="alerts-and-capacity-decisions-for-production">Alerts and
+capacity decisions for production</h2>
+<p>Monitor oldest queued job, failed/ambiguous jobs, lease expiration,
+worker progress, API errors/latency, database connections/storage/CPU,
+denied execution spikes and audit-export lag. Define alert thresholds
+against the service’s incident response requirements; this prototype has
+no measured production SLO to copy.</p>
+<p>The initial Cloud Run limits are illustrative safety bounds, not
+load-test results. Account for API and worker connection pools when
+choosing database capacity. Use database/provider timeouts, maximum
+incident sizes and rate limits. Keep model token/cost budgets explicit
+before enabling model calls. Redis can later cache safe read results or
+hold rate-limit counters, but it is not currently on the correctness
+path and should never be the sole approval record.</p>
+<p>Keep the worker’s minimum replica and always-allocated CPU
+configuration in place while it polls the database. Reducing minimum
+replicas to zero may stop all work while API requests still appear
+successful.</p>
+<h1 id="guide-validation">Validation record</h1>
+<p>Recorded on 6 October 2026. This document reports executed checks and
+their limits, not a production certification.</p>
+<h2 id="final-application-checks">Final application checks</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Observed result</th>
+<th>What it establishes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Backend suite:
+<code>python -m pytest tests apps/api/tests -q</code></td>
+<td><strong>97 passed</strong>, final owner run 2.56 seconds</td>
+<td>Policy, API lifecycle, worker recovery and UTC serialization
+regressions on temporary SQLite databases.</td>
+</tr>
+<tr class="even">
+<td>Frontend TypeScript</td>
+<td>Passed</td>
+<td>Frontend source satisfies its configured TypeScript checks.</td>
+</tr>
+<tr class="odd">
+<td>Frontend production build</td>
+<td>Passed with Next.js <strong>16.3.8</strong></td>
+<td>Static/application compilation and standalone build succeed.</td>
+</tr>
+<tr class="even">
+<td>Frontend dependency audit</td>
+<td><strong>0 reported vulnerabilities</strong></td>
+<td>npm’s advisory database reported none for the final lockfile at the
+time of checking. This is not a universal security guarantee.</td>
+</tr>
+<tr class="odd">
+<td>Ruff on backend and tests</td>
+<td>Passed</td>
+<td>Configured lint/style rules pass.</td>
+</tr>
+<tr class="even">
+<td>Fixture evaluator</td>
+<td><strong>64 cases, 0 errors</strong></td>
+<td>Real workflow/retrieval/policy code runs on explicit synthetic
+observations.</td>
+</tr>
+<tr class="odd">
+<td>Native HTTP smoke</td>
+<td>Passed</td>
+<td>API and a separate worker complete the approval-to-resolution
+lifecycle with durable SQLite jobs.</td>
+</tr>
+<tr class="even">
+<td>Browser journey</td>
+<td>Passed, no page errors observed</td>
+<td>Operator creation/investigation, approver decision/execution,
+resolution, report, runbooks, policy, measured evals and architecture
+work through the UI.</td>
+</tr>
+<tr class="odd">
+<td>Mobile browser</td>
+<td>Passed at <strong>390 × 844</strong> viewport, no document
+horizontal overflow</td>
+<td>Main console, new incident form, navigation and uncertain-evidence
+escalation remain usable.</td>
+</tr>
+<tr class="even">
+<td>Browser timezone</td>
+<td>Passed in <strong>Asia/Kolkata</strong></td>
+<td>API UTC timestamps represent the correct instant rather than
+appearing five and a half hours old.</td>
+</tr>
+<tr class="odd">
+<td>MCP stdio</td>
+<td>Handshake, list/read succeeded; rollback denied</td>
+<td>The real MCP protocol exposes typed fixture reads and blocks
+mutation bypass.</td>
+</tr>
+<tr class="even">
+<td>Python wheel</td>
+<td>Built with migration assets</td>
+<td>Packaged installation retains Alembic configuration and
+versions.</td>
+</tr>
+</tbody>
+</table>
+<p>The UTC regression matters: SQLite drops timezone metadata when
+reading datetimes. The API now attaches UTC to its naive database
+timestamps and converts aware datetimes to UTC. Tests check actual
+JavaScript <code>Date.parse</code> behavior under Asia/Kolkata, as well
+as incident and audit serialization.</p>
+<h2 id="real-local-container-checks">Real local container checks</h2>
+<p>The final Docker Compose stack was built and started in this
+workspace. PostgreSQL/pgvector, the migration task, the nonroot API, the
+supervised worker and the Next.js frontend passed their health checks.
+Validation used ports 8100/3100 to coexist with native browser tests;
+normal user defaults remain 8000/3000.</p>
+<p>The HTTP smoke created a PostgreSQL-backed incident, queued
+investigation, observed a supported rollback proposal, rejected approval
+from the operator role, approved through the approver role, explicitly
+executed the simulation, verified resolution and replayed the same
+idempotency key safely.</p>
+<p>The container evaluator loaded its default dataset and completed 64
+fixture cases without errors. The API could read the mounted measured
+evaluation report. PostgreSQL had its vector extension installed.</p>
+<p>Direct PostgreSQL audit guard checks attempted
+<strong>UPDATE</strong>, <strong>DELETE</strong> and
+<strong>TRUNCATE</strong> within rolled-back transactions. All three
+were rejected. The application ORM also blocks audit updates/deletes.
+Database administrators can still drop defenses or rewrite history;
+stronger retention requires external anchoring or immutable storage.</p>
+<p>Cloud Run templates and their renderer were parsed/rendered locally.
+They have not been server-validated, applied or deployed to a cloud
+account. A final API container rebuild includes the UTC serialization
+patch.</p>
+<h2 id="evaluation-interpretation">Evaluation interpretation</h2>
+<p>The checked-in generated report is
+<code>evals/results/latest.json</code>. Its deterministic fixture
+baseline produced 1.0 for measured correctness and safety checks. Those
+results are intentionally labeled <strong>synthetic deterministic
+integration results</strong>. The classifier and fixture suite were
+designed together; this is not an independent held-out model
+benchmark.</p>
+<p>The recorded report’s local latency P50 is 2.298 ms and P95 is 7.825
+ms. Container/native runs can vary with host load. These durations do
+not include live provider calls, customer integrations or production
+queues. Retrieval Recall@5 is measured over only four curated runbooks,
+so it does not establish semantic retrieval quality at enterprise
+scale.</p>
+<p>Remediation success rate and average LLM cost remain null in the
+evaluation report because the harness stops at the approval gate and
+does not collect provider billing. Separate lifecycle tests execute
+simulated remediation. No actual system rollback or restart
+occurred.</p>
+<h2 id="recorded-evidence">Recorded evidence</h2>
+<ul>
+<li>Investigation trace (included in the repository under
+docs/media/)</li>
+<li>Approved proposal (included in the repository under
+docs/media/)</li>
+<li>Resolved incident (included in the repository under
+docs/media/)</li>
+<li>Incident report (included in the repository under docs/media/)</li>
+<li>Measured evaluation dashboard (included in the repository under
+docs/media/)</li>
+<li>Mobile console (included in the repository under docs/media/)</li>
+<li>Incident workflow recording (included in the repository under
+docs/media/)</li>
+</ul>
+<p>These are captures from the running native demo, using SQLite and
+synthetic telemetry. They are separate from the real PostgreSQL
+container validation above.</p>
+<h2 id="what-remains-unverified-or-intentionally-unfinished">What
+remains unverified or intentionally unfinished</h2>
+<p>No OpenAI credential was configured, so the optional live-model path
+was not called. No enterprise provider, production mutation adapter,
+OAuth/OIDC login flow, tenant isolation, semantic embedding
+ingestion/search, OTLP export/context propagation, load capacity,
+managed backup restore, cloud IAM deployment or production recovery was
+tested.</p>
+<p>The worker has bounded leases and protects against ambiguous mutation
+replay. Long-running future adapters require lease renewal or a reviewed
+longer-bound execution design. The current fixture mutation and database
+receipt cannot establish exactly-once behavior for a remote
+provider.</p>
+<p>See <a href="#guide-security">security.md</a>, <a
+href="#guide-deployment">deployment.md</a>, <a
+href="#guide-operations">operations.md</a> and the production
+requirements in the README before configuring real infrastructure.</p>
+<h1 id="guide-0001-explicit-workflow">ADR 0001: use one explicit
+workflow orchestrator</h1>
+<p>Status: accepted for the initial implementation.</p>
+<p>The incident lifecycle must expose evidence gathering, policy
+evaluation, waiting for approval and verification. We use LangGraph for
+the investigation graph and the OpenAI Responses API for optional
+structured reasoning. We do not introduce multiple overlapping agent
+orchestrators.</p>
+<p>This gives the workflow one state and transition model. Application
+database jobs own durability at job boundaries. LangGraph persistence is
+not assumed merely because a graph is used. A future checkpoint design
+must explicitly address node replay, side effects and approval
+freshness.</p>
+<p>Consequence: adding a second orchestration SDK requires a concrete
+capability and recovery argument. An experimental managed-agent branch
+can be compared with the same evals without changing the main safety
+boundary.</p>
+<h1 id="guide-0002-database-jobs">ADR 0002: database-backed work
+requests</h1>
+<p>Status: accepted for the initial implementation.</p>
+<p>An investigation must survive API restarts and a human approval may
+arrive much later. We persist jobs alongside incident state in
+PostgreSQL and run a separate worker. Redis remains optional cache
+infrastructure.</p>
+<p>Writing the incident transition and work request transactionally
+avoids the early dual-write problem of writing a database row and
+separately publishing to a broker. It also reduces local infrastructure
+requirements.</p>
+<p>Consequence: monitor database contention, connection pools, job queue
+age and leases. SQLite is a single-worker learning fallback. At higher
+scale, a managed queue may be introduced with a transactional outbox and
+consumers that tolerate duplicates. Mutating work is not blindly
+replayed after an ambiguous worker failure.</p>
+<h1 id="guide-0003-approved-actions">ADR 0003: approval authorizes an
+exact action</h1>
+<p>Status: accepted for the initial implementation.</p>
+<p>The agent may recommend a remediation but cannot authorize it.
+Rollback and restart proposals require an approver role. Approval stores
+the exact canonical proposal fingerprint. Execution rechecks identity,
+state, typed arguments, fingerprint and idempotency, independently of
+the model and UI.</p>
+<p>Write SQL, destructive operations and unknown tools are denied.
+Database diagnostic tools accept named query templates rather than
+arbitrary model-produced SQL. MCP exposes read-only tools in the initial
+server; it does not create a second mutation route.</p>
+<p>Consequence: real integrations must preserve this boundary and use
+scoped credentials. A changed proposal requires new approval. Production
+should add approval expiry, service/environment entitlements and
+configurable separation of duties.</p>
+<h1 id="guide-0004-fixture-first">ADR 0004: reproducible simulation
+before live infrastructure</h1>
+<p>Status: accepted for the initial implementation.</p>
+<p>No enterprise metrics, deployments, logs or cloud credentials are
+configured in this workspace. The initial adapters simulate observations
+and state changes. This lets reviewers run the complete workflow and
+test dangerous-action rejection without operating real
+infrastructure.</p>
+<p>Optional OpenAI reasoning can use the same observations, but it does
+not enable live tools. Evaluations report the execution mode and
+disclose synthetic data. Unknown and database-saturation cases may
+require more investigation instead of forcing a rollback or restart.</p>
+<p>Consequence: this is a runnable production-oriented foundation, not a
+certified production incident responder. Every live adapter requires
+authorization, contract tests, staging failure exercises and operational
+ownership before activation.</p>
+</body>
+</html>

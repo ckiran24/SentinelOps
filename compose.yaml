@@ -1,0 +1,132 @@
+name: sentinelops
+
+x-api-environment: &api-environment
+  DATABASE_URL: postgresql+psycopg://sentinelops:${POSTGRES_PASSWORD:-sentinel-local-database-only}@postgres:5432/sentinelops
+  DEMO_MODE: ${DEMO_MODE:-true}
+  JWT_SECRET: ${JWT_SECRET:-development-only-sentinelops-signing-key-replace-before-deployment}
+  JWT_ISSUER: sentinelops
+  JWT_AUDIENCE: sentinelops-api
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  LLM_MODE: ${LLM_MODE:-fixture}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+  LIVE_TOOLS_ENABLED: "false"
+  ENABLE_PGVECTOR: "true"
+  EVAL_REPORT_PATH: /app/evals/results/latest.json
+  OTEL_CONSOLE_EXPORT: ${OTEL_CONSOLE_EXPORT:-false}
+  PYTHONUNBUFFERED: "1"
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: sentinelops
+      POSTGRES_DB: sentinelops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel-local-database-only}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U sentinelops -d sentinelops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    command: [sh, -c, "python -m sentinelops.migrate && python -m sentinelops.seed"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    ports:
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8000}:8000"
+    volumes:
+      - ./evals/results:/app/evals/results:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    command: [python, /app/infra/worker_service.py]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: apps/web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # Optional: not required by the current database-backed job queue.
+  redis:
+    image: redis:7.4.2-alpine
+    profiles: [cache]
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Optional receiver scaffold; current workflow traces are stored in PostgreSQL.
+  telemetry:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    profiles: [telemetry]
+    command: [--config=/etc/otelcol/config.yaml]
+    volumes:
+      - ./infra/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

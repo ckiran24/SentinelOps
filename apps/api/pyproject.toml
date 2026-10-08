@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinelops-api"
+version = "0.1.0"
+description = "Approval-gated incident investigation and simulated remediation"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+  "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3",
+  "sqlalchemy>=2.0.36,<3", "psycopg[binary]>=3.2,<4",
+  "PyJWT[crypto]>=2.10,<3", "langgraph>=0.3,<2",
+  "openai>=1.68,<3", "alembic>=1.14,<2", "mcp>=1.9,<2",
+  "opentelemetry-api>=1.30,<2", "opentelemetry-sdk>=1.30,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<10", "httpx>=0.28,<1", "ruff>=0.11,<1"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sentinelops*"]
+
+[tool.setuptools.data-files]
+"share/sentinelops" = ["alembic.ini"]
+"share/sentinelops/alembic" = ["alembic/env.py"]
+"share/sentinelops/alembic/versions" = ["alembic/versions/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

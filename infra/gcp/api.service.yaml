@@ -1,0 +1,68 @@
+# Template only. Replace every ${...} token before deployment.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sentinelops-api
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        run.googleapis.com/cloudsql-instances: ${CLOUD_SQL_CONNECTION_NAME}
+    spec:
+      serviceAccountName: ${API_SERVICE_ACCOUNT}
+      containerConcurrency: 40
+      timeoutSeconds: 60
+      containers:
+        - image: ${API_IMAGE}
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: DEMO_MODE
+              value: "false"
+            - name: LIVE_TOOLS_ENABLED
+              value: "false"
+            - name: ENABLE_PGVECTOR
+              value: "false"
+            - name: LLM_MODE
+              value: fixture
+            - name: JWT_ALGORITHM
+              value: RS256
+            - name: JWT_ISSUER
+              value: ${JWT_ISSUER}
+            - name: JWT_AUDIENCE
+              value: sentinelops-api
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelops-jwt-public-key
+                  key: ${JWT_KEY_VERSION}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelops-database-url
+                  key: ${DATABASE_SECRET_VERSION}
+            - name: CORS_ORIGINS
+              value: ${WEB_ORIGIN}
+            - name: EVAL_REPORT_PATH
+              value: /app/evals/results/latest.json
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            periodSeconds: 30
+            timeoutSeconds: 3
