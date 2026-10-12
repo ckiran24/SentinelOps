@@ -1,4 +1,4 @@
-# Run SentinelOps on your own computer
+# Run SentinelOps on your computer
 
 The source project was built in a remote Codex cloud workspace. A browser address beginning with `localhost` points to the computer running that browser. Containers running in the cloud workspace therefore cannot be opened through your laptop's `localhost` address.
 
